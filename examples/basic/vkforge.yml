@@ -1,0 +1,11 @@
+namespace: basic_renderer_
+namestyle: snake_case
+
+Pipeline:
+  - name: my_pipeline
+    ShaderModule:
+      - path: vert.vert
+      - path: frag.frag
+    VertexInputBindingDescription:
+      - stride: Vertex
+        first_location: 0
