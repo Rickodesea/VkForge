@@ -10,6 +10,7 @@ from typing import Any
 from dataclasses import is_dataclass, asdict, fields
 from pydantic import BaseModel
 from pathlib import Path
+from .designer import DesignInfo
 
 def deep_serialize(obj: Any) -> Any:
     if isinstance(obj, dict):
@@ -58,7 +59,7 @@ def load_file(config_path: str) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description='VkForge - Vulkan API Implemention Generation for Renderer Development.')
-    parser.add_argument('config_path', help='Relative or Absolute Path to VkForge Implementation VkForgeConfig. It may be YAML or JSON file. File type is determined by its extension.')
+    parser.add_argument('--config-path', help='Relative or Absolute Path to VkForge Implementation VkForgeConfig. It may be YAML or JSON file. File type is determined by its extension.')
     parser.add_argument('--impl-dir', default='vkforge_impl', help='Directory where VkForge Source Implementation is generated. It is created if it does not exist. If the directory is not an absolute path then the directory is considered relative to the current working directory of the running VkForge script.')
     parser.add_argument(
         '--config-roots',
@@ -67,6 +68,10 @@ def main():
         default=[]   # Fallback if user omits it
     )
     parser.add_argument('--shader-build-dir', default='build/bin', help='Directory compiled shaders are saved. If the paths of the shaders in the config are GLSL source instead of SPIR-V binaries, then VkForge will leverage glslangValidator to compile the shaders and store the SPIR-V in this directory.')
+    parser.add_argument('--framework', default='SDL3', choices=['SDL3'], help='Framework to use for the KHR implementation of Vulkan. Only SDL3 is supported currently.')
+    parser.add_argument('--language', default='C99', choices=['C99'], help='Language to implement Vulkan in. Only C99 is supported currently.')
+    # Only SDL3 framework is supported now. In the future we can probably support other frameworks
+    # Only C (specifically C99) language is supported for now. In the future we can probably support other languages
 
     args = parser.parse_args()
     raw_data = load_file(args.config_path)
@@ -74,11 +79,15 @@ def main():
     forgeConfig = VkForgeConfig(**raw_data)
     shaderConfig = load_shader_config(args.config_roots, args.shader_build_dir, forgeConfig)
 
+    design_info = DesignInfo(forgeConfig, shaderConfig)
+    designs = [] #design_implementation(design_info) # experimental
+
 
     inst = {
         K.ROOTS: args.config_roots,
         K.FORGE: forgeConfig,
-        K.SHADER: shaderConfig
+        K.SHADER: shaderConfig,
+        K.DESIGNS: designs
     }
 
 

@@ -108,3 +108,5 @@ class K(str, Enum):
     ROOTS = "roots"
     FORGE = "vkforge"
     SHADER = "shader"
+    DESIGNS = "designs"
+    ID = "id"

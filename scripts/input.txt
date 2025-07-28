@@ -1,0 +1,44 @@
+void VulkanSelectGPU(VkInstance instance, VkSurfaceKHR surface, VkPhysicalDevice* inPhysicalDevice, uint32_t* inQueueFamilyIndex)
+{
+    static_assert(inPhysicalDevice, "inPhysicalDevice can not be null.");
+    static_assert(inQueueFamilyIndex, "inQueueFamilyIndex can not be null.");
+
+    VULKAN_ENUM(physical_dev, VkPhysicalDevice, vkEnumeratePhysicalDevices, 32, instance);
+
+	uint32_t best_score = 0;
+    VkPhysicalDevice best_physical_dev = VK_NULL_HANDLE;
+    uint32_t best_queue_fam_ind;
+
+	for (uint32_t i = 0; i < physical_dev_count; i++) 
+    {
+		VkPhysicalDeviceProperties physical_dev_prop = {0};
+		vkGetPhysicalDeviceProperties(physical_dev_buffer[i], &physical_dev_prop);
+        VULKAN_ENUM(queue_fam_prop, VkQueueFamilyProperties, vkGetPhysicalDeviceQueueFamilyProperties, 32, physical_dev_buffer[i]);
+		uint32_t score = ScoreGPU(physical_dev_prop.limits);
+
+		for (uint32_t j = 0; j < queue_fam_prop_count; j++) {
+            uint32_t requested_flags = VK_QUEUE_GRAPHICS_BIT;
+			if (requested_flags == (queue_fam_prop_buffer[j].queueFlags & requested_flags)) 
+            {
+				VkBool32 supported = VK_FALSE;
+				vkGetPhysicalDeviceSurfaceSupportKHR(physical_dev_buffer[i], j, surface, &supported);
+
+				if (supported && (score > best_score)) {
+                    best_score = score;
+
+					best_physical_dev = physical_dev_buffer[i];
+					best_queue_fam_ind = j;
+				}
+			}
+		}
+	}
+
+	if(best_physical_dev == VK_NULL_HANDLE ) 
+    {
+        SDL_LogError(0, "No physical device found!");
+        exit(1);
+    }
+
+    *inPhysicalDevice   = best_physical_dev;
+    *inQueueFamilyIndex = best_queue_fam_ind;
+}
