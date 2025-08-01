@@ -4,10 +4,12 @@ from typing import Any
 # Map Function
 ############################################
 
-def map_value(mapping:dict, key:str) -> Any:
+
+def map_value(mapping: dict, key: str) -> Any:
     if key.lower() in mapping:
         return mapping[key]
     return key
+
 
 ############################################
 # Maps
@@ -49,12 +51,12 @@ SHADER_STAGE_MAP = {
     "rmiss": "VK_SHADER_STAGE_MISS_BIT_KHR",
     "rcall": "VK_SHADER_STAGE_CALLABLE_BIT_KHR",
     "mesh_nv": "VK_SHADER_STAGE_MESH_BIT_NV",
-    "task_nv": "VK_SHADER_STAGE_TASK_BIT_NV"
+    "task_nv": "VK_SHADER_STAGE_TASK_BIT_NV",
 }
 
 INPUT_RATE_MAP = {
     "vertex": "VK_VERTEX_INPUT_RATE_VERTEX",
-    "instance": "VK_VERTEX_INPUT_RATE_INSTANCE"
+    "instance": "VK_VERTEX_INPUT_RATE_INSTANCE",
 }
 
 TOPOLOGY_MAP = {
@@ -104,9 +106,40 @@ DYNAMIC_STATE_MAP = {
 
 from enum import Enum
 
-class K(str, Enum):
-    ROOTS = "roots"
-    FORGE = "vkforge"
-    SHADER = "shader"
-    DESIGNS = "designs"
-    ID = "id"
+
+class F(str, Enum):
+    DEBUG_MSG_CALLBACK = "VkForge_DebugMsgCallback"
+    DEBUG_MSG_INFO = "VkForge_GetDebugUtilsMessengerCreateInfo"
+    SCORE_PHYSICAL_DEVICE = "VkForge_ScorePhysicalDeviceLimits"
+    SELECT_PHYSICAL_DEVICE = "VkForge_SelectPhysicalDevice"
+    SEMAPHORE = "VkForge_CreateVkSemaphore"
+    FENCE = "VkForge_CreateVkFence"
+    DEVICE = "VkForge_CreateDevice"
+    COMMAND_BUFFERS = "VkForge_CreateCommandBuffers"
+    CACHE = "VkForge_GetCache"
+
+
+class FT(str, Enum):
+    FORGE = "VkForge"
+    CACHE = "VkForgeCache"
+    BUFFERALLOC = "VkForgeBufferAlloc"
+    ENUM = "VKFORGE_ENUM"
+    RESULT_ENUM = "VKFORGE_RESULT_ENUM"
+
+
+class S(str, Enum):
+    # types
+    TEX = "textures"
+    TEX_IMG = "separate_images"
+    TEX_SAM = "separate_samplers"
+    IMG = "images"
+    SSBO = "ssbos"
+    UBO = "ubos"
+    # subpass
+    SUBPASS = "subpass_inputs"
+    # vertices
+    IN = "inputs"
+    OUT = "outputs"
+    # details
+    ENTRY = "entryPoints"
+    TYPE = "types"

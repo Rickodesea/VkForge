@@ -1,6 +1,8 @@
-from vkforge.designer import DesignInfo, design_name
+from vkforge.context import VkForgeContext
+from vkforge.mappings import F, FT
 
-def create_callback(di: DesignInfo) -> str:
+
+def CreateDebugMsgCallback(ctx: VkForgeContext) -> str:
     content = """\
 VKAPI_ATTR VkBool32 VKAPI_CALL {name}
 (
@@ -39,13 +41,12 @@ VKAPI_ATTR VkBool32 VKAPI_CALL {name}
     return VK_FALSE;
 }}
 """
-    output = content.format(
-        name=design_name(di, "debug_msg_callback")
-    )
+    output = content.format(name=F.DEBUG_MSG_CALLBACK)
 
     return output
 
-def create_debug(di: DesignInfo) -> str:
+
+def CreateDebugMsgInfo(ctx: VkForgeContext) -> str:
     content = """\
 VkDebugUtilsMessengerCreateInfoEXT {name}()
 {{
@@ -64,14 +65,12 @@ VkDebugUtilsMessengerCreateInfoEXT {name}()
     return createInfo;
 }}
 """
-    output = content.format(
-        name=design_name(di, "GetDebugUtilsMessengerCreateInfo"),
-        callback=design_name(di, "debug_msg_callback")
-    )
+    output = content.format(name=F.DEBUG_MSG_INFO, callback=F.DEBUG_MSG_CALLBACK)
 
     return output
 
-def create_score(di: DesignInfo) -> str:
+
+def CreateScorePhysicalDevice(ctx: VkForgeContext) -> str:
     content = """\
 uint32_t {name}(VkPhysicalDeviceLimits limits)
 {{
@@ -156,67 +155,38 @@ uint32_t {name}(VkPhysicalDeviceLimits limits)
     return score;
 }}
 """
-    output = content.format(
-        name=design_name(di, "ScoreGPU")
-    )
+    output = content.format(name=F.SCORE_PHYSICAL_DEVICE)
 
     return output
 
-def create_vk_fence(di: DesignInfo) -> str:
+
+def CreateFence(ctx: VkForgeContext) -> str:
     content = """\
-void {name}(VkInstance instance, VkSurfaceKHR surface, VkPhysicalDevice* inPhysicalDevice, uint32_t* inQueueFamilyIndex)
+VkFence {name}(VkDevice device, VkAllocationCallbacks* allocator)
 {{
-    static_assert(inPhysicalDevice, "inPhysicalDevice can not be null.");
-    static_assert(inQueueFamilyIndex, "inQueueFamilyIndex can not be null.");
+    VkFenceCreateInfo createInfo = {{0}};
+    createInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
-    VULKAN_ENUM(physical_dev, VkPhysicalDevice, vkEnumeratePhysicalDevices, 32, instance);
+    VkFence fence = VK_NULL_HANDLE;
+    VkResult result;
 
-        uint32_t best_score = 0;
-    VkPhysicalDevice best_physical_dev = VK_NULL_HANDLE;
-    uint32_t best_queue_fam_ind;
+    result = vkCreateFence(device, &createInfo, allocator, &fence);
 
-        for (uint32_t i = 0; i < physical_dev_count; i++)
+    if( VK_SUCCESS != result )
     {{
-                VkPhysicalDeviceProperties physical_dev_prop = {{0}};
-                vkGetPhysicalDeviceProperties(physical_dev_buffer[i], &physical_dev_prop);
-        VULKAN_ENUM(queue_fam_prop, VkQueueFamilyProperties, vkGetPhysicalDeviceQueueFamilyProperties, 32, physical_dev_buffer[i]);
-                uint32_t score = {score}(physical_dev_prop.limits);
-
-                for (uint32_t j = 0; j < queue_fam_prop_count; j++) {{
-            uint32_t requested_flags = VK_QUEUE_GRAPHICS_BIT;
-                        if (requested_flags == (queue_fam_prop_buffer[j].queueFlags & requested_flags))
-            {{
-                                VkBool32 supported = VK_FALSE;
-                                vkGetPhysicalDeviceSurfaceSupportKHR(physical_dev_buffer[i], j, surface, &supported);
-
-                                if (supported && (score > best_score)) {{
-                    best_score = score;
-
-                                        best_physical_dev = physical_dev_buffer[i];
-                                        best_queue_fam_ind = j;
-                                }}
-                        }}
-                }}
-        }}
-
-        if(best_physical_dev == VK_NULL_HANDLE )
-    {{
-        SDL_LogError(0, "No physical device found!");
+        SDL_Log("Failed to create VkFence.");
         exit(1);
     }}
 
-    *inPhysicalDevice   = best_physical_dev;
-    *inQueueFamilyIndex = best_queue_fam_ind;
+    return fence;
 }}
 """
-    output = content.format(
-        name=design_name(di, "VulkanSelectGPU"),
-        score=design_name(di, "ScoreGPU")
-    )
+    output = content.format(F.FENCE)
 
     return output
 
-def create_vk_semaphore(di: DesignInfo) -> str:
+
+def CreateSemaphore(ctx: VkForgeContext) -> str:
     content = """\
 VkSemaphore {name}(VkDevice device, VkAllocationCallbacks* allocator)
 {{
@@ -237,64 +207,272 @@ VkSemaphore {name}(VkDevice device, VkAllocationCallbacks* allocator)
     return semaphore;
 }}
 """
+    output = content.format(F.SEMAPHORE)
+
+    return output
+
+
+def CreateGetCache(ctx: VkForgeContext) -> str:
+    content = """\
+void {name}
+(
+    VkAllocationCallbacks* allocator,
+    void*                  next,
+    VkInstance             instance,
+    VkSurfaceKHR           surface,
+    VkPhysicalDevice       physical_device,
+
+    {cacheType}*          retCache
+)
+{{
+    assert(retCache);
+
+    (void)allocator;
+    (void)next;
+
+    VkResult result;
+    {cacheType} cache = {{0}};
+
+    {enum}(
+        formats,
+        VkSurfaceFormatKHR,
+        vkGetPhysicalDeviceSurfaceFormatsKHR,
+        64,
+        physical_device,
+        surface
+    );
+
+    for (uint32_t i = 0; i < formats_count; i++)
+    {{
+        cache.surface_fmt = formats_buffer[i].format;
+        if ({reqFormat} == formats_buffer[i].format)
+            break;
+    }}
+
+    result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &cache.surface_cap);
+
+    if( VK_SUCCESS != result )
+    {{
+        SDL_Log("Failed to get Vulkan physical device surface capabilities");
+        exit(1);
+    }}
+
+    *retCache = cache;
+}}
+
+"""
     output = content.format(
-        name=design_name(di, ["create", "vk", "semaphore"])
+        name=F.CACHE, cacheType=FT.CACHE, enum=FT.ENUM, reqFormat="UNION"
     )
 
     return output
 
-def create_vk_swapchain(di: DesignInfo) -> str:
+
+def CreateCmdImageBarrier(ctx: VkForgeContext) -> str:
     content = """\
-VkSwapchainKHR {name}(
-    VkDevice device,
-    VkAllocationCallbacks* allocator,
-    VkSwapchainCreateInfoKHR createInfo
+void CmdImageBarrier
+(
+    VkCommandBuffer cmdbuf,
+
+    VkImage image,
+    VkImageLayout oldLayout,
+    VkImageLayout newLayout,
+    VkAccessFlags srcAccessMask,
+    VkAccessFlags dstAccessMask,
+    VkPipelineStageFlags srcStageFlags,
+    VkPipelineStageFlags dstStageFlags
 )
 {{
-    VkSwapchainKHR swapchain = VK_NULL_HANDLE;
-    VkResult result;
+    VkImageMemoryBarrier barrier = {{0}};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = oldLayout;
+    barrier.newLayout = newLayout;
+    barrier.image = image;
+    barrier.srcAccessMask = srcAccessMask;
+    barrier.dstAccessMask = dstAccessMask;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.layerCount = 1;
 
-    result = vkCreateSwapchainKHR(device, &createInfo, allocator, &swapchain);
-
-    if( VK_SUCCESS != result )
-    {{
-        SDL_Log("Failed to create VkSwapchain.");
-        exit(1);
-    }}
-
-    return swapchain;
+    vkCmdPipelineBarrier(
+        cmdbuf,
+        srcStageFlags,
+        dstStageFlags,
+        0,
+        0,0,
+        0,0,
+        1, &barrier
+    );
 }}
+
+
 """
-    output = content.format(
-        name=design_name(di, ["create", "vk", "swapchain"])
-    )
+    output = content.format()
 
     return output
 
-def create_vk_commandpool(di: DesignInfo) -> str:
+
+def CreateCmdBufferBarrier(ctx: VkForgeContext) -> str:
     content = """\
-VkCommandPool {name}(
-    VkDevice device,
-    VkAllocationCallbacks* allocator,
-    VkCommandPoolCreateInfo createInfo
+void CmdBufferBarrier
+(
+    VkCommandBuffer cmdbuf,
+
+    VkBuffer buffer,
+    VkDeviceSize offset,
+    VkDeviceSize size,
+    VkAccessFlags srcAccessMask,
+    VkAccessFlags dstAccessMask,
+    VkPipelineStageFlags srcStageFlags,
+    VkPipelineStageFlags dstStageFlags
 )
 {{
-    VkCommandPool commandpool = VK_NULL_HANDLE;
-    VkResult result;
+    VkBufferMemoryBarrier barrier = {{0}};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.buffer = buffer;
+    barrier.offset = offset;
+    barrier.size = size;
+    barrier.srcAccessMask = srcAccessMask;
+    barrier.dstAccessMask = dstAccessMask;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
-    result = vkCreateCommandPool(device, &createInfo, allocator, &commandpool);
+    vkCmdPipelineBarrier(
+        cmdbuf,
+        srcStageFlags,
+        dstStageFlags,
+        0,
+        0,0,
+        1, &barrier,
+        0,0
+    );
+}}
+
+"""
+    output = content.format()
+
+    return output
+
+
+def CreateGetSurfaceFormat(ctx: VkForgeContext) -> str:
+    content = """\
+VkSurfaceFormatKHR GetSurfaceFormat
+(
+    VkPhysicalDevice physical_device,
+    VkSurfaceKHR     surface,
+    VkFormat         req_format
+)
+{{
+    VULKAN_ENUM(
+        formats,
+        VkSurfaceFormatKHR,
+        vkGetPhysicalDeviceSurfaceFormatsKHR,
+        64,
+        physical_device,
+        surface
+    );
+
+    for (uint32_t i = 0; i < formats_count; i++)
+    {{
+        if (req_format == formats_buffer[i].format)
+            return formats_buffer[i];
+    }}
+
+    return formats_buffer[0];
+}}
+
+"""
+    output = content.format()
+
+    return output
+
+
+def CreateGetSwapchainSize(ctx: VkForgeContext) -> str:
+    content = """\
+VkSurfaceCapabilitiesKHR GetSurfaceCapabilities
+(
+    VkPhysicalDevice physical_device,
+    VkSurfaceKHR     surface
+)
+{{
+    VkSurfaceCapabilitiesKHR surface_cap = {{0}};
+    VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &surface_cap);
 
     if( VK_SUCCESS != result )
     {{
-        SDL_Log("Failed to create VkCommandPool.");
+        SDL_LogError(0, "Failed to get physical device surface capabilities");
         exit(1);
     }}
 
-    return commandpool;
+    return surface_cap;
 }}
+
 """
-    output = content.format(
-        name=design_name(di, ["create", "vk", "commandpool"])
-    )
+    output = content.format()
+
+    return output
+
+
+def CreateGetPresentMode(ctx: VkForgeContext) -> str:
+    content = """\
+VkPresentModeKHR GetPresentMode
+(
+    VkPhysicalDevice physical_device,
+    VkSurfaceKHR     surface,
+    VkPresentModeKHR req_mode
+)
+{{
+    VULKAN_ENUM(
+        modes,
+        VkPresentModeKHR,
+        vkGetPhysicalDeviceSurfacePresentModesKHR,
+        4,
+        physical_device,
+        surface
+    );
+
+    for (uint32_t i = 0; i < modes_count; i++)
+    {{
+        if (req_mode == modes_buffer[i]) return req_mode;
+    }}
+
+    return modes_buffer[0];
+}}
+
+"""
+    output = content.format()
+
+    return output
+
+
+def CreateGetMemoryTypeIndex(ctx: VkForgeContext) -> str:
+    content = """\
+uint32_t GetMemoryTypeIndex
+(
+    VkPhysicalDevice      physical_device,
+    uint32_t              typeFilter,
+    VkMemoryPropertyFlags properties
+)
+{{
+    VkPhysicalDeviceMemoryProperties memProperties = {{0}};
+    vkGetPhysicalDeviceMemoryProperties(physical_device, &memProperties);
+
+    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+    {{
+        if ((typeFilter & (1 << i)) &&
+            (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+        {{
+            return i;
+        }}
+    }}
+
+    SDL_LogError(0, "Failed to find suitable Vulkan memory type");
+    exit(1);
+    return 0;
+}}
+
+"""
+    output = content.format()
 
     return output

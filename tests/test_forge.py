@@ -2,9 +2,6 @@ from vkforge import VkForgeConfig
 import yaml
 
 yml_string = """
-namespace: basic_renderer_
-namestyle: snake_case
-
 Pipeline:
   - name: my_pipeline
     ShaderModule:
@@ -17,8 +14,8 @@ Pipeline:
         first_location: 0
 """
 
-#yml_path = Path(__file__).parent / "fixtures" / "my_config.yml"
-#raw_data = yaml.safe_load(yml_path.read_text())
+# yml_path = Path(__file__).parent / "fixtures" / "my_config.yml"
+# raw_data = yaml.safe_load(yml_path.read_text())
 
 
 def test_forge_config():
@@ -28,4 +25,3 @@ def test_forge_config():
     assert forgeConfig.namespace == "basic_renderer_"
     assert forgeConfig.namestyle == "snake_case"
     assert isinstance(forgeConfig.Pipeline, list)
-
