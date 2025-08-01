@@ -27,7 +27,9 @@
 # Contributions are welcomed from the community to make VkForge more versatile
 # and support other types of implementation of Vulkan.
 
-from pydantic import BaseModel, Field, field_validator, model_validator, PrivateAttr
+from pydantic import (
+    BaseModel, Field, field_validator, model_validator, PrivateAttr, ConfigDict
+)
 from typing import List, Optional, Literal, Union
 import re
 
@@ -247,7 +249,8 @@ class VkShaderModule(BaseModel):
         default=None, description="Entry point name of the shader for this stage."
     )
     # VkSpecializationInfo is not supported. We can add support for this in the future with help from the community.
-
+    
+    model_config = ConfigDict(frozen=True)
 
 class VkVertexInputBindingDescription(BaseModel):
     stride: Union[str, int] = Field(

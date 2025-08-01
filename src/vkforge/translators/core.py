@@ -43,8 +43,8 @@ void {name}
     VkApplicationInfo appInfo = {{0}};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.apiVersion = {version};
-    appInfo.pEngineName = {engine};
-    appInfo.pApplicationName = {appName} Alrick Grandison, Algodal");
+    appInfo.pEngineName = "{engine}";
+    appInfo.pApplicationName = "{appName}";
 
     VkInstanceCreateInfo createInfo = {{0}};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -68,7 +68,7 @@ void {name}
 
 """
     output = content.format(
-        name=CreateInstance,
+        name="CreateInstance",
         debugInfo=F.DEBUG_MSG_INFO,
         version=ctx.forgeConfig.ApplicationInfo.apiVersion,
         engine=ctx.forgeConfig.ApplicationInfo.pEngineName,
@@ -107,7 +107,7 @@ void {name}
 
 
 """
-    output = content.format(name=CreateSurface)
+    output = content.format(name="CreateSurface")
 
     return output
 
@@ -326,17 +326,19 @@ def CreateSwapchain(ctx: VkForgeContext) -> str:
     content = """\
 void CreateSwapchain
 (
-    VkPhysicalDevice physical_device,
-    VkSurfaceKHR     surface,
-    VkDevice         device,
-    VkFormat         req_format,
-    uint32_t         req_swapchain_size,
-    VkPresentModeKHR req_present_mode,
+    VkAllocationCallbacks* allocator,
+    void*                  next,
+    VkPhysicalDevice       physical_device,
+    VkSurfaceKHR           surface,
+    VkDevice               device,
+    VkFormat               req_format,
+    uint32_t               req_swapchain_size,
+    VkPresentModeKHR       req_present_mode,
 
-    VkSwapchainKHR*  retSwapchain,
-    uint32_t*        retSwapchainSize,
-    VkImage*         retSwapchainImages,
-    VkImageView*     retSwapchainImageViews
+    VkSwapchainKHR*        retSwapchain,
+    uint32_t*              retSwapchainSize,
+    VkImage*               retSwapchainImages,
+    VkImageView*           retSwapchainImageViews
 )
 {{
     assert(retSwapchain);
@@ -364,8 +366,9 @@ void CreateSwapchain
     createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     createInfo.presentMode = GetPresentMode(physical_device, surface, req_present_mode);
     createInfo.clipped = VK_TRUE;
+    createInfo.pNext = next;
 
-    result = vkCreateSwapchainKHR(device, &createInfo, 0, &swapchain);
+    result = vkCreateSwapchainKHR(device, &createInfo, allocator, &swapchain);
 
     if( VK_SUCCESS != result )
     {{
@@ -402,7 +405,7 @@ void CreateSwapchain
         viewInfo.format = surface_format.format;
         viewInfo.subresourceRange = subres;
 
-        result = vkCreateImageView(device, &viewInfo, 0, &swapchain_image_views[i]);
+        result = vkCreateImageView(device, &viewInfo, allocator, &swapchain_image_views[i]);
 
         if(VK_SUCCESS != result)
         {{

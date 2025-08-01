@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 from vkforge.context import VkForgeContext
 from vkforge.translators import GetCoreStrings
 
@@ -35,8 +37,13 @@ def WriteCore(ctx: VkForgeContext):
         code="\n".join(GetCoreStrings(ctx)),
     )
 
-    with open(CORE_FILE, "w") as f:
+    filename = CORE_FILE
+    filepath = Path(ctx.sourceDir) / filename
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(filepath, "w") as f:
         f.write(output)
+        print(f"Generated '{filepath}'")
 
 
 def Generate(ctx: VkForgeContext):

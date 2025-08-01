@@ -108,6 +108,9 @@ from enum import Enum
 
 
 class F(str, Enum):
+    def __format__(self, format_spec):
+        return format(self.value, format_spec)
+    
     DEBUG_MSG_CALLBACK = "VkForge_DebugMsgCallback"
     DEBUG_MSG_INFO = "VkForge_GetDebugUtilsMessengerCreateInfo"
     SCORE_PHYSICAL_DEVICE = "VkForge_ScorePhysicalDeviceLimits"
@@ -120,6 +123,9 @@ class F(str, Enum):
 
 
 class FT(str, Enum):
+    def __format__(self, format_spec):
+        return format(self.value, format_spec)
+    
     FORGE = "VkForge"
     CACHE = "VkForgeCache"
     BUFFERALLOC = "VkForgeBufferAlloc"
@@ -128,6 +134,9 @@ class FT(str, Enum):
 
 
 class S(str, Enum):
+    def __format__(self, format_spec):
+        return format(self.value, format_spec)
+    
     # types
     TEX = "textures"
     TEX_IMG = "separate_images"

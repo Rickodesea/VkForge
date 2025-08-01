@@ -2,20 +2,12 @@ from .schema import VkForgeConfig, VkShaderModule
 from .shader import VkForgeShaderConfig, ShaderDetail
 from .mappings import S
 from dataclasses import dataclass, field
-from typing import List, Tuple, Dict
-
-
-@dataclass
-class VkDescriptorSetLayoutBinding:
-    binding: int = None
-    descriptorType: str = None
-    descriptorCount: int = None
-    stageFlags: List[str] = None
+from typing import List, Tuple, Dict, FrozenSet
 
 
 @dataclass
 class VkForgeLayout:
-    layout_bindings: List[VkDescriptorSetLayoutBinding] = None
+    layout_bindings: List[dict] = None
 
 
 def print_warnings(id: str, R: dict):
@@ -36,6 +28,8 @@ def raise_errors(id: str, R: dict):
         S.IN,
         S.OUT,
         S.UBO,
+        S.TYPE,
+        S.TEX
     ]
 
     unrecognized = []
@@ -59,7 +53,7 @@ def generate_descriptorsets(sd: ShaderDetail):
     descriptorset_types = [S.IMG, S.UBO, S.SSBO, S.TEX, S.TEX_IMG, S.TEX_SAM]
 
     R = sd.r  # reflect
-    mode = sd.sm
+    _, mode = sd.entrypoint
 
     descriptorsets = []
 
@@ -68,6 +62,8 @@ def generate_descriptorsets(sd: ShaderDetail):
             members = R[descriptorset_type]
             for member in members:
                 dtype = member["type"]
+                if S.TYPE in R and dtype in R[S.TYPE]:
+                    dtype = descriptorset_type
                 set = member["set"]
                 binding = member["binding"]
                 count = get_array_size(member)
@@ -85,7 +81,7 @@ def check_for_errors_single_descriptorsets(
         mode1, set1, binding1, dtype1, count1 = d
         for e in descriptorsets[i + 1 :]:
             mode2, set2, binding2, dtype2, count2 = e
-            if set1 == set2 and binding1 == binding2:
+            if set1 == set2 and binding1 == binding2 and mode1 == mode2:
                 raise ValueError(
                     f"set {set1} and binding {binding1} overlapped for shader {id}"
                 )
@@ -94,16 +90,25 @@ def check_for_errors_single_descriptorsets(
 def check_for_errors_group_descriptorsets(
     descriptorsets_group: Dict[str, List[Tuple[str, int, int, str, int]]],
 ):
-    for i, id, descriptorsets in enumerate(descriptorsets_group):
+    for k in descriptorsets_group.items():
+        print(type(k), k)
+    for i, (id, descriptorsets) in enumerate(descriptorsets_group.items()):
         if i == len(descriptorsets_group) - 1:
             break
         for mode1, set1, binding1, dtype1, count1 in descriptorsets:
-            for id2, descriptorsets2 in descriptorsets_group[i + 1 :]:
+            for j, (id2, descriptorsets2) in enumerate(descriptorsets_group.items()):
+                if j < i + 1:
+                    continue
                 for mode2, set2, binding2, dtype2, count2 in descriptorsets2:
-                    if set1 == set2 and binding1 == binding2:
+                    if set1 == set2 and binding1 == binding2 and mode1 == mode2:
                         raise ValueError(
                             f"set {set1} and binding {binding1} overlapped for shaders {id} and {id2}. "
                             f"This is not allowed since bother shaders are grouped together in a single pipeline."
+                        )
+                    elif set1 == set2 and binding1 == binding2 and dtype1 != dtype2:
+                        raise ValueError(
+                            f"set {set1} and binding {binding1} have "
+                            f"different types {dtype1}, {dtype2} in {id}, {id2} shaders"
                         )
 
 
@@ -111,7 +116,7 @@ def condense_group(
     descriptorset_group: Dict[str, List[Tuple[str, int, int, str, int]]],
 ) -> List[Tuple[str, int, int, str, int]]:
     sets = set()
-    for id, descriptorsets in descriptorset_group:
+    for id, descriptorsets in descriptorset_group.items():
         for d in descriptorsets:
             sets.add(d)
     return list(sets)
@@ -119,8 +124,8 @@ def condense_group(
 
 def build_descriptorset_layout(
     descriptorset_group: Dict[str, List[Tuple[str, int, int, str, int]]],
-) -> List[VkDescriptorSetLayoutBinding]:
-    bindings: Dict[Tuple, VkDescriptorSetLayoutBinding] = {}
+) -> List[dict]:
+    bindings: Dict[Tuple, dict] = {}
 
     condensed_descriptorsets = condense_group(descriptorset_group)
 
@@ -129,17 +134,23 @@ def build_descriptorset_layout(
         key = (dset, binding, dtype, count)
         if key in bindings:
             current = bindings[key]
-            if not mode in current.stageFlags:
-                current.stageFlags.append(mode)
+            if not mode in current['stages']:
+                current['stages'].append(mode)
         else:
-            binding = VkDescriptorSetLayoutBinding(binding, dtype, count, [mode])
+            binding = {
+                'set': dset,
+                'binding' : binding,
+                'type' : dtype,
+                'count' : count,
+                'stages' : [mode]
+            }
             bindings[key] = binding
 
-    return [value for key, value in bindings]
+    return [value for key, value in bindings.items()]
 
 
 def create_layout(fc: VkForgeConfig, sc: VkForgeShaderConfig) -> VkForgeLayout:
-    bindings: List[VkDescriptorSetLayoutBinding] = []
+    bindings: List[dict] = []
 
     for shader_group in sc.combinations:
         descriptorsets_group = {}
@@ -157,4 +168,4 @@ def create_layout(fc: VkForgeConfig, sc: VkForgeShaderConfig) -> VkForgeLayout:
 
         bindings.extend(build_descriptorset_layout(descriptorsets_group))
 
-    return list(set(bindings))
+    return bindings

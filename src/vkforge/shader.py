@@ -20,7 +20,7 @@ class ShaderDetail:
 @dataclass
 class VkForgeShaderConfig:
     details: Dict[str, ShaderDetail] = field(default_factory=dict)
-    combinations: List[List[str]]
+    combinations: List[List[str]] = field(default_factory=list)
 
 
 def find_shader(roots: List[str], id: str) -> Path:
@@ -50,12 +50,12 @@ from pathlib import Path
 import subprocess
 
 
-def disassemble_shader(shader_build_dir: str, shader_path: Path, mode: str) -> Path:
+def disassemble_shader(build_dir: str, shader_path: Path, mode: str) -> Path:
     output_path = (
-        Path(shader_build_dir) / f"{shader_path.stem}.disassembled.{mode}.glsl"
+        Path(build_dir) / f"{shader_path.stem}.disassembled.{mode}.glsl"
     )
 
-    Path(shader_build_dir).mkdir(parents=True, exist_ok=True)
+    Path(build_dir).mkdir(parents=True, exist_ok=True)
 
     try:
         subprocess.run(
@@ -95,7 +95,7 @@ def disassemble_shader(shader_build_dir: str, shader_path: Path, mode: str) -> P
     return output_path
 
 
-def compile_shader(shader_build_dir: str, shader_path: Path) -> Path:
+def compile_shader(build_dir: str, shader_path: Path) -> Path:
     try:
         subprocess.run(
             ["glslangValidator", "-h"],
@@ -110,11 +110,11 @@ def compile_shader(shader_build_dir: str, shader_path: Path) -> Path:
     except subprocess.CalledProcessError:
         pass
 
-    shader_build_dir = Path(shader_build_dir)
-    shader_build_dir.mkdir(parents=True, exist_ok=True)
+    build_dir = Path(build_dir)
+    build_dir.mkdir(parents=True, exist_ok=True)
 
     # Compose output path
-    output_file = shader_build_dir / (shader_path.name + ".spv")
+    output_file = build_dir / (shader_path.name + ".spv")
 
     # Compile GLSL to SPIR-V
     result = subprocess.run(
@@ -210,7 +210,7 @@ def validate_shader_entrypoint(sm: VkShaderModule, r: dict) -> Tuple[str, str]:
     return (name, mode)
 
 
-def validate_shader_combination(shaders: List["ShaderDetail"]):
+def validate_shader_combination(build_dir: str, shaders: List[ShaderDetail]):
     try:
         subprocess.run(
             ["glslangValidator", "-h"],
@@ -226,9 +226,12 @@ def validate_shader_combination(shaders: List["ShaderDetail"]):
         pass
 
     shader_sources = [str(shader.source_path) for shader in shaders]
+    build_dir = Path(build_dir)
+    build_dir.mkdir(parents=True, exist_ok=True)
+    output_file = build_dir / "validation" / ("shader_validation" + ".mod")
 
     result = subprocess.run(
-        ["glslangValidator", "-l"] + shader_sources,
+        ["glslangValidator", "-l"] + shader_sources + ["-V", "-o", output_file],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -243,7 +246,7 @@ def validate_shader_combination(shaders: List["ShaderDetail"]):
 
 
 def load_shader_config(
-    roots: List[str], shader_build_dir: str, fc: VkForgeConfig
+    roots: List[str], build_dir: str, fc: VkForgeConfig
 ) -> VkForgeShaderConfig:
     sc = VkForgeShaderConfig()
     shader_seen = set()
@@ -263,7 +266,7 @@ def load_shader_config(
 
                 if shader_is_source(shader_ext):
                     shader_source_path = shader_path
-                    shader_binary_path = compile_shader(shader_build_dir, shader_path)
+                    shader_binary_path = compile_shader(build_dir, shader_path)
                     spirv_details = reflect_shader(shader_binary_path)
                     entrypoint = validate_shader_entrypoint(
                         shader_module, spirv_details
@@ -276,7 +279,7 @@ def load_shader_config(
                     )
                     _, mode = entrypoint
                     shader_source_path = disassemble_shader(
-                        shader_build_dir, shader_binary_path, mode
+                        build_dir, shader_binary_path, mode
                     )
                 else:
                     raise ValueError(
@@ -297,6 +300,6 @@ def load_shader_config(
                 if not sd:
                     raise ValueError(f"Could not find shader details for {id}")
             pipeline_shaders.append(sd)
-        validate_shader_combination(pipeline_shaders)
+        validate_shader_combination(build_dir, pipeline_shaders)
         sc.combinations.append(pipeline_combinations)
     return sc
