@@ -173,3 +173,12 @@ class MEMBER(StringEnum):
     SET = "set"
     BIND = "binding"
 
+class FILE(StringEnum):
+    CORE       = "vkforge_core.c"
+    UTIL       = "vkforge_utils.c"
+    TYPE       = "vkforge_typedecls.h"
+    FUNC       = "vkforge_funcdecls.h"
+    PIPELINE_C = "vkforge_pipelines.c"
+    PIPELINE_H = "vkforge_pipelines.h"
+    CMAKE      = "CMakeLists.txt"
+

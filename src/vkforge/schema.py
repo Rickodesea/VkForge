@@ -32,7 +32,24 @@ from pydantic import (
 )
 from typing import List, Optional, Literal, Union
 import re
+from .mappings import *
 
+class GenerateOnceModel(BaseModel):
+    pass
+
+class UserExternalModel(BaseModel):
+    includeHeadersPreprocessor: Optional[List[str]] = Field(
+        default_factory=List[str],
+        description="#include of User headers. List the header names. If it is a standard header "
+        "wrap in angle brackets. Eg: - MyHeader - <MyStandardHeader>"
+    )
+    insertDeclarations: Optional[List[str]] = Field(
+        default_factory=List[str],
+        description="Inserts user defined strings into the generated code. The code is expected to be "
+        "declaration type code because it will be included in the generated headers."
+        "There is no restriction on what it can be. You are responsible for it to compile. "
+        "Eg: - struct MyStruct; - extern int MyVar;"
+    )
 
 class VkInstanceCreateInfoModel(BaseModel):
     ppEnabledLayerNames: Optional[
@@ -439,6 +456,27 @@ class VkPipelineModel(BaseModel):
 
 
 class VkForgeModel(BaseModel):
+    UserExternal: Optional[UserExternalModel] = Field(
+        default_factory=UserExternalModel, description="References to the User code external to the generated code"
+    )
+
+    GenerateOnce: Optional[List[Literal[
+            FILE.CORE,
+            FILE.CMAKE,
+            FILE.FUNC,
+            FILE.PIPELINE_C,
+            FILE.PIPELINE_H,
+            FILE.TYPE,
+            FILE.UTIL
+        ]]
+    ] = Field(
+        default_factory=List[str], 
+        description="VkForge generates a list of files. You can mark specific files to only generate once. "
+        "Once VkForge sees that these files already exists, it will not overwrite them. "
+        "This is useful if you only want to use VkForge as a starter and then manually update the code "
+        "afterwards."
+    )
+
     InstanceCreateInfo: Optional[VkInstanceCreateInfoModel] = Field(
         default_factory=VkInstanceCreateInfoModel, description="Instance creation info."
     )
