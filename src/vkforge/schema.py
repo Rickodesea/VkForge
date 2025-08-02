@@ -34,7 +34,7 @@ from typing import List, Optional, Literal, Union
 import re
 
 
-class VkInstanceCreateInfo(BaseModel):
+class VkInstanceCreateInfoModel(BaseModel):
     ppEnabledLayerNames: Optional[
         List[
             Literal[
@@ -52,7 +52,7 @@ class VkInstanceCreateInfo(BaseModel):
     )
 
 
-class VkApplicationInfo(BaseModel):
+class VkApplicationInfoModel(BaseModel):
     apiVersion: Optional[
         Literal[
             # "VK_API_VERSION_1_0",
@@ -73,7 +73,7 @@ class VkApplicationInfo(BaseModel):
     engineVersion: Optional[int] = 0
 
 
-class VkDebugUtilsMessengerCreateInfoEXT(BaseModel):
+class VkDebugUtilsMessengerCreateInfoEXTModel(BaseModel):
     messageSeverity: Optional[
         List[
             Literal[
@@ -115,7 +115,7 @@ class VkDebugUtilsMessengerCreateInfoEXT(BaseModel):
     )
 
 
-class VkPhysicalDeviceVulkan13Features(BaseModel):
+class VkPhysicalDeviceVulkan13FeaturesModel(BaseModel):
     dynamicRendering: Optional[bool] = Field(
         default=True,
         description="Enable dynamic rendering feature. Requires Vulkan >= 1.3.",
@@ -127,7 +127,7 @@ class VkPhysicalDeviceVulkan13Features(BaseModel):
     # only the above features are supported for the time being
 
 
-class VkPhysicalDeviceFeatures(BaseModel):
+class VkPhysicalDeviceFeaturesModel(BaseModel):
     robustBufferAccess: Optional[bool] = False
     fullDrawIndexUint32: Optional[bool] = False
     imageCubeArray: Optional[bool] = False
@@ -185,13 +185,13 @@ class VkPhysicalDeviceFeatures(BaseModel):
     inheritedQueries: Optional[bool] = False
 
 
-class VkDeviceCreateInfo(BaseModel):
+class VkDeviceCreateInfoModel(BaseModel):
     ppEnabledExtensionNames: Optional[List[str]] = Field(
         default_factory=lambda: ["VK_KHR_swapchain"],
         description='List device entensions. "VK_KHR_swapchain" extension is always required.',
     )
 
-    PhysicalDeviceFeatures: Optional[VkPhysicalDeviceFeatures] = Field(
+    PhysicalDeviceFeatures: Optional[VkPhysicalDeviceFeaturesModel] = Field(
         default=None, description="Boolean indicators of all the features to be enabled"
     )
 
@@ -204,7 +204,7 @@ class VkDeviceCreateInfo(BaseModel):
         return v
 
 
-class VkSwapchainCreateInfoKHR(BaseModel):
+class VkSwapchainCreateInfoKHRModel(BaseModel):
     minImageCount: Optional[int] = Field(
         default=4, description="Number of images in the swapchain."
     )
@@ -217,42 +217,17 @@ class VkSwapchainCreateInfoKHR(BaseModel):
     )
 
 
-class VkShaderModule(BaseModel):
+class VkShaderModuleModel(BaseModel):
     path: str = Field(
         ...,
-        description="Path to the shader binary or shader GLSL source. If it is a source then the shader will be complied first before being processed.",
+        description="Path to the shader binary or shader GLSL source. "
+        "The file must have the .spv or glsl (.vert, .frag, .geom, etc) extensions. "
+        "If the shader path provided is a source, then VkForge will utilize glslValidator "
+        "to compile the shader. The mode and entrypoint is extracted from the "
+        "compiled shader.",
     )
-    mode: Optional[
-        Literal[
-            "vert",
-            "frag",
-            "comp",
-            "geom",
-            "tesc",
-            "tese",
-            "mesh",
-            "task",
-            "rgen",
-            "rint",
-            "rahit",
-            "rchit",
-            "rmiss",
-            "rcall",
-            "mesh_nv",
-            "task_nv",
-        ]
-    ] = Field(
-        default=None,
-        description="Shader stage mode, e.g. 'vert' or 'frag'. If it is not specified, it is determined from the extension.",
-    )
-    pName: Optional[str] = Field(
-        default=None, description="Entry point name of the shader for this stage."
-    )
-    # VkSpecializationInfo is not supported. We can add support for this in the future with help from the community.
-    
-    model_config = ConfigDict(frozen=True)
 
-class VkVertexInputBindingDescription(BaseModel):
+class VkVertexInputBindingDescriptionModel(BaseModel):
     stride: Union[str, int] = Field(
         ...,
         description="User defined type name, `sizeof(...)` string, or literal integer stride size.",
@@ -301,7 +276,7 @@ class VkVertexInputBindingDescription(BaseModel):
         return self
 
 
-class VkPipelineInputAssemblyStateCreateInfo(BaseModel):
+class VkPipelineInputAssemblyStateCreateInfoModel(BaseModel):
     topology: Optional[
         Literal[
             "VK_PRIMITIVE_TOPOLOGY_POINT_LIST",
@@ -333,7 +308,7 @@ class VkPipelineInputAssemblyStateCreateInfo(BaseModel):
     )
 
 
-class VkPipelineRasterizationStateCreateInfo(BaseModel):
+class VkPipelineRasterizationStateCreateInfoModel(BaseModel):
     polygonMode: Optional[str] = Field(
         default="VK_POLYGON_MODE_FILL", description="Polygon mode for rasterization."
     )
@@ -367,22 +342,22 @@ class VkPipelineRasterizationStateCreateInfo(BaseModel):
     )
 
 
-class VkPipeline(BaseModel):
+class VkPipelineModel(BaseModel):
     name: Optional[str] = Field(None, description="User defined pipeline name.")
     extern_import: Optional[List[str]] = Field(
         default=[], description="List of user-defined header imports (includes)."
     )
 
-    ShaderModule: List[VkShaderModule] = Field(
+    ShaderModule: List[VkShaderModuleModel] = Field(
         ..., description="List of shader modules."
     )
-    VertexInputBindingDescription: List[VkVertexInputBindingDescription] = Field(
+    VertexInputBindingDescription: List[VkVertexInputBindingDescriptionModel] = Field(
         ..., description="List of vertex input binding descriptions."
     )
     PipelineInputAssemblyStateCreateInfo: Optional[
-        VkPipelineInputAssemblyStateCreateInfo
+        VkPipelineInputAssemblyStateCreateInfoModel
     ] = Field(
-        default_factory=VkPipelineInputAssemblyStateCreateInfo,
+        default_factory=VkPipelineInputAssemblyStateCreateInfoModel,
         description="Input assembly state description.",
     )
     DynamicState: Optional[
@@ -446,9 +421,9 @@ class VkPipeline(BaseModel):
         description="List of dynamic state enables (viewport and scissor always required).",
     )
     PipelineRasterizationStateCreateInfo: Optional[
-        VkPipelineRasterizationStateCreateInfo
+        VkPipelineRasterizationStateCreateInfoModel
     ] = Field(
-        default_factory=VkPipelineRasterizationStateCreateInfo,
+        default_factory=VkPipelineRasterizationStateCreateInfoModel,
         description="Rasterization state description.",
     )
 
@@ -463,28 +438,28 @@ class VkPipeline(BaseModel):
         return v
 
 
-class VkForgeConfig(BaseModel):
-    InstanceCreateInfo: Optional[VkInstanceCreateInfo] = Field(
-        default_factory=VkInstanceCreateInfo, description="Instance creation info."
+class VkForgeModel(BaseModel):
+    InstanceCreateInfo: Optional[VkInstanceCreateInfoModel] = Field(
+        default_factory=VkInstanceCreateInfoModel, description="Instance creation info."
     )
-    ApplicationInfo: Optional[VkApplicationInfo] = Field(
-        default_factory=VkApplicationInfo, description="Application info."
+    ApplicationInfo: Optional[VkApplicationInfoModel] = Field(
+        default_factory=VkApplicationInfoModel, description="Application info."
     )
-    DebugUtilsMessengerCreateInfoEXT: Optional[VkDebugUtilsMessengerCreateInfoEXT] = (
+    DebugUtilsMessengerCreateInfoEXT: Optional[VkDebugUtilsMessengerCreateInfoEXTModel] = (
         Field(
-            default_factory=VkDebugUtilsMessengerCreateInfoEXT,
+            default_factory=VkDebugUtilsMessengerCreateInfoEXTModel,
             description="Debug messenger creation info.",
         )
     )
-    PhysicalDeviceVulkan13Features: Optional[VkPhysicalDeviceVulkan13Features] = Field(
-        default_factory=VkPhysicalDeviceVulkan13Features,
+    PhysicalDeviceVulkan13Features: Optional[VkPhysicalDeviceVulkan13FeaturesModel] = Field(
+        default_factory=VkPhysicalDeviceVulkan13FeaturesModel,
         description="Physical device Vulkan 1.3 features.",
     )
-    DeviceCreateInfo: Optional[VkDeviceCreateInfo] = Field(
-        default_factory=VkDeviceCreateInfo, description="Device creation info."
+    DeviceCreateInfo: Optional[VkDeviceCreateInfoModel] = Field(
+        default_factory=VkDeviceCreateInfoModel, description="Device creation info."
     )
-    SwapchainCreateInfoKHR: Optional[VkSwapchainCreateInfoKHR] = Field(
-        default_factory=VkSwapchainCreateInfoKHR, description="Swapchain creation info."
+    SwapchainCreateInfoKHR: Optional[VkSwapchainCreateInfoKHRModel] = Field(
+        default_factory=VkSwapchainCreateInfoKHRModel, description="Swapchain creation info."
     )
 
-    Pipeline: List[VkPipeline] = Field(..., description="List of graphics pipelines.")
+    Pipeline: List[VkPipelineModel] = Field(..., description="List of graphics pipelines.")

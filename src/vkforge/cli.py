@@ -3,14 +3,14 @@ import json
 import argparse
 import os
 from pathlib import Path
-from .schema import VkForgeConfig
-from .shader import load_shader_config
+from .schema import VkForgeModel
+from .shader import load_shader_data
 from typing import Any
 from dataclasses import is_dataclass, asdict, fields
 from pydantic import BaseModel
 from pathlib import Path
 from .context import VkForgeContext
-from .layout import VkForgeLayout, create_layout
+from .layout import VkForgeLayout, create_descriptorset_layouts
 from .writer import Generate
 
 
@@ -92,14 +92,14 @@ def main():
     args = parser.parse_args()
     raw_data = load_file(args.config_path)
 
-    forgeConfig = VkForgeConfig(**raw_data)
-    shaderConfig = load_shader_config(
-        args.config_roots, args.build_dir, forgeConfig
+    forgeModel = VkForgeModel(**raw_data)
+    shaderData = load_shader_data(
+        args.config_roots, args.build_dir, forgeModel
     )
-    layout = create_layout(forgeConfig, shaderConfig)
+    layout = create_descriptorset_layouts(forgeModel, shaderData)
 
     context = VkForgeContext(
-        args.source_dir, args.build_dir, forgeConfig, shaderConfig, layout
+        args.source_dir, args.build_dir, forgeModel, shaderData, layout
     )
 
     print(json.dumps(deep_serialize(context), indent=4))

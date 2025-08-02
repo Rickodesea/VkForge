@@ -1,3 +1,3 @@
-from .schema import VkForgeConfig
+from .schema import VkForgeModel
 
-__all__ = ["VkForgeConfig"]
+__all__ = ["VkForgeModel"]

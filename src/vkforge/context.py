@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from .schema import VkForgeConfig
+from .schema import VkForgeModel
 from .shader import VkForgeShaderConfig
 from .layout import VkForgeLayout
 
@@ -8,6 +8,6 @@ from .layout import VkForgeLayout
 class VkForgeContext:
     sourceDir: str = None
     buildDir: str = None
-    forgeConfig: VkForgeConfig = None
+    forgeConfig: VkForgeModel = None
     shaderConfig: VkForgeShaderConfig = None
     layout: VkForgeLayout = None

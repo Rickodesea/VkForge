@@ -1,27 +1,11 @@
 from typing import List, Tuple, Dict
-from .schema import VkForgeConfig, VkShaderModule
 from pathlib import Path
 import os
-from .mappings import SHADER_STAGE_MAP
 import subprocess
 import json
-from dataclasses import dataclass, field
-
-
-@dataclass
-class ShaderDetail:
-    sm: VkShaderModule = None
-    binary_path: Path = None
-    source_path: Path = None
-    entrypoint: Tuple[str, str] = None
-    r: dict = None  # reflection details
-
-
-@dataclass
-class VkForgeShaderConfig:
-    details: Dict[str, ShaderDetail] = field(default_factory=dict)
-    combinations: List[List[str]] = field(default_factory=list)
-
+import subprocess
+from .schema import VkForgeModel
+from .mappings import *
 
 def find_shader(roots: List[str], id: str) -> Path:
     file_path = Path(id)
@@ -41,14 +25,8 @@ def shader_is_source(extension: str) -> bool:
     extension_list.extend(["." + mode for mode in SHADER_STAGE_MAP.keys()])
     return extension in extension_list
 
-
 def shader_is_binary(extension: str) -> bool:
     return extension == None or extension in [".spv"]
-
-
-from pathlib import Path
-import subprocess
-
 
 def disassemble_shader(build_dir: str, shader_path: Path, mode: str) -> Path:
     output_path = (
@@ -174,43 +152,27 @@ def reflect_shader(shader_path: Path) -> dict:
     return reflection_data
 
 
-def validate_shader_entrypoint(sm: VkShaderModule, r: dict) -> Tuple[str, str]:
-    if sm.pName:
-        name = sm.pName.strip()
-        for entrypoint in r.get("entryPoints", []):
-            if name == entrypoint.get("name", ""):
-                mode = entrypoint.get("mode")
-                if not mode:
-                    raise ValueError(
-                        f"Can not confirm mode for shader {sm.path} at entrypoint {name}"
-                    )
-        raise ValueError(
-            f"User defined entrypoint {name} is not found in shader {sm.path}"
-        )
-    else:
-        entrypoints = r.get("entryPoints")
-        if entrypoints:
-            first_entrypoint = entrypoints[0]
-            name = first_entrypoint.get("name")
-            if not name:
-                raise ValueError(
-                    f"Can not confirm entrypoint name for shader {sm.path}"
-                )
-            mode = first_entrypoint.get("mode")
-            if not mode:
-                raise ValueError(
-                    f"Can not confirm mode for shader {sm.path} at entrypoint {name}"
-                )
-    if sm.mode:
-        if not sm.mode.strip() == mode:
+def get_shader_entrypoint(id: str, r: dict) -> Tuple[str, str]:
+    entrypoints = r.get("entryPoints")
+    if entrypoints:
+        first_entrypoint = entrypoints[0]
+        if not first_entrypoint:
+            raise ValueError(f"Could not get entrypoint for shader {id}")
+        
+        name = first_entrypoint.get("name")
+        if not name:
             raise ValueError(
-                f"User defined {sm.mode} mode does not match "
-                "the {mode} mode extracted from {sm.path} shader."
+                f"Can not confirm entrypoint name for shader {id}"
+            )
+        mode = first_entrypoint.get("mode")
+        if not mode:
+            raise ValueError(
+                f"Can not confirm mode for shader {id} at entrypoint {name}"
             )
     return (name, mode)
 
 
-def validate_shader_combination(build_dir: str, shaders: List[ShaderDetail]):
+def validate_shader_combination(build_dir: str, shaders: List[dict]):
     try:
         subprocess.run(
             ["glslangValidator", "-h"],
@@ -225,10 +187,10 @@ def validate_shader_combination(build_dir: str, shaders: List[ShaderDetail]):
     except subprocess.CalledProcessError:
         pass
 
-    shader_sources = [str(shader.source_path) for shader in shaders]
+    shader_sources = [shader[SHADER.SRCPATH] for shader in shaders]
     build_dir = Path(build_dir)
     build_dir.mkdir(parents=True, exist_ok=True)
-    output_file = build_dir / "validation" / ("shader_validation" + ".mod")
+    output_file = build_dir / "validation" / ("shader_validation" + ".mod")  
 
     result = subprocess.run(
         ["glslangValidator", "-l"] + shader_sources + ["-V", "-o", output_file],
@@ -245,13 +207,14 @@ def validate_shader_combination(build_dir: str, shaders: List[ShaderDetail]):
         )
 
 
-def load_shader_config(
-    roots: List[str], build_dir: str, fc: VkForgeConfig
-) -> VkForgeShaderConfig:
-    sc = VkForgeShaderConfig()
+def load_shader_data(
+    roots: List[str], build_dir: str, fm: VkForgeModel
+):
+    shaders: Dict[dict] = {}
+    shader_combinations: List[list] = []
     shader_seen = set()
 
-    for pipeline in fc.Pipeline:
+    for pipeline in fm.Pipeline:
         pipeline_shaders = []
         pipeline_combinations = []
         for shader_module in pipeline.ShaderModule:
@@ -267,17 +230,18 @@ def load_shader_config(
                 if shader_is_source(shader_ext):
                     shader_source_path = shader_path
                     shader_binary_path = compile_shader(build_dir, shader_path)
-                    spirv_details = reflect_shader(shader_binary_path)
-                    entrypoint = validate_shader_entrypoint(
-                        shader_module, spirv_details
+                    spirv_reflect = reflect_shader(shader_binary_path)
+                    entrypoint = get_shader_entrypoint(
+                        id, spirv_reflect
                     )
+                    entryname, mode = entrypoint
                 elif shader_is_binary(shader_ext):
                     shader_binary_path = shader_path
-                    spirv_details = reflect_shader(shader_binary_path)
-                    entrypoint = validate_shader_entrypoint(
-                        shader_module, spirv_details
+                    spirv_reflect = reflect_shader(shader_binary_path)
+                    entrypoint = get_shader_entrypoint(
+                        id, spirv_reflect
                     )
-                    _, mode = entrypoint
+                    entryname, mode = entrypoint
                     shader_source_path = disassemble_shader(
                         build_dir, shader_binary_path, mode
                     )
@@ -287,19 +251,23 @@ def load_shader_config(
                         "SPIR-V binary from the extension: {shader_ext}"
                     )
 
-                sd = ShaderDetail()
-                sd.sm = shader_module
-                sd.entrypoint = entrypoint
-                sd.binary_path = shader_binary_path
-                sd.source_path = shader_source_path
-                sd.r = spirv_details
+                shader = {
+                    SHADER.MODE: mode,
+                    SHADER.ENTRYNAME: entryname,
+                    SHADER.BINPATH: shader_binary_path,
+                    SHADER.SRCPATH: shader_source_path,
+                    SHADER.REFLECT: spirv_reflect
+                }
 
-                sc.details[id] = sd
+                shaders[id] = shader
             else:
-                sd = sc.details.get(id)
-                if not sd:
+                shader = shaders.get(id)
+                if not shader:
                     raise ValueError(f"Could not find shader details for {id}")
-            pipeline_shaders.append(sd)
+            pipeline_shaders.append(shader)
         validate_shader_combination(build_dir, pipeline_shaders)
-        sc.combinations.append(pipeline_combinations)
-    return sc
+        shader_combinations.append(pipeline_combinations)
+    return {
+        SHADER.LIST: shaders,
+        SHADER.COMBO: shader_combinations
+    }

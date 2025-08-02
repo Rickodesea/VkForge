@@ -1,39 +1,32 @@
-from .schema import VkForgeConfig, VkShaderModule
-from .shader import VkForgeShaderConfig, ShaderDetail
-from .mappings import S
-from dataclasses import dataclass, field
-from typing import List, Tuple, Dict, FrozenSet
+from .schema import VkForgeModel
+from .mappings import *
+from typing import List, Tuple, Dict
 
 
-@dataclass
-class VkForgeLayout:
-    layout_bindings: List[dict] = None
-
-
-def print_warnings(id: str, R: dict):
-    unsupported = [S.SUBPASS]
-    for r in R.keys():
+def print_unsupported_warning(id: str, reflect: dict):
+    unsupported = [SHADER.SUBPASS]
+    for r in reflect.keys():
         if r in unsupported:
             print(f"WARNING: VkForge does not support {r} in shader {id}.")
 
 
-def raise_errors(id: str, R: dict):
+def raise_unrecognized_error(id: str, reflect: dict):
     recognized = [
-        S.IMG,
-        S.SSBO,
-        S.SUBPASS,
-        S.TEX_IMG,
-        S.TEX_SAM,
-        S.ENTRY,
-        S.IN,
-        S.OUT,
-        S.UBO,
-        S.TYPE,
-        S.TEX
+        REFLECT.IMAGE, 
+        REFLECT.UBO, 
+        REFLECT.SSBO, 
+        REFLECT.TEXTURE, 
+        REFLECT.SAMPLER_IMAGE, 
+        REFLECT.SAMPLER,
+        REFLECT.SUBPASS,
+        REFLECT.ENTRYPOINT,
+        REFLECT.INPUT,
+        REFLECT.OUTPUT,
+        REFLECT.TYPE,
     ]
 
     unrecognized = []
-    for r in R.keys():
+    for r in reflect.keys():
         if not r in recognized:
             unrecognized.append(r)
     if len(unrecognized) > 0:
@@ -42,44 +35,51 @@ def raise_errors(id: str, R: dict):
         )
 
 
-def get_array_size(member: dict) -> int:
-    if "array_size_is_literal" in member and "array" in member:
-        if member["array_size_is_literal"] == [True]:
-            return sum(member["array"])
+def get_reflect_member_size(member: dict) -> int:
+    if MEMBER.ARRAY_LITERAL in member and MEMBER.ARRAY in member:
+        if member[MEMBER.ARRAY_LITERAL] == [True]:
+            return sum(member[MEMBER.ARRAY])
     return 1
 
 
-def generate_descriptorsets(sd: ShaderDetail):
-    descriptorset_types = [S.IMG, S.UBO, S.SSBO, S.TEX, S.TEX_IMG, S.TEX_SAM]
+def create_descriptorsets(shader: dict):
+    dset_types = [
+        REFLECT.IMAGE, 
+        REFLECT.UBO, 
+        REFLECT.SSBO, 
+        REFLECT.TEXTURE, 
+        REFLECT.SAMPLER_IMAGE, 
+        REFLECT.SAMPLER
+    ]
 
-    R = sd.r  # reflect
-    _, mode = sd.entrypoint
+    reflect = shader[SHADER.REFLECT]
+    mode    = shader[SHADER.MODE]
 
-    descriptorsets = []
+    dsets = []
 
-    for descriptorset_type in descriptorset_types:
-        if descriptorset_type in R.keys():
-            members = R[descriptorset_type]
+    for dset_type in dset_types:
+        if dset_type in reflect.keys():
+            members = reflect[dset_type]
             for member in members:
-                dtype = member["type"]
-                if S.TYPE in R and dtype in R[S.TYPE]:
-                    dtype = descriptorset_type
-                set = member["set"]
-                binding = member["binding"]
-                count = get_array_size(member)
-                descriptorsets.append((mode, set, binding, dtype, count))
+                type = member[MEMBER.TYPE]
+                if REFLECT.TYPE in reflect and type in reflect[REFLECT.TYPE]:
+                    type = dset_type
+                set = member[MEMBER.SET]
+                binding = member[MEMBER.BIND]
+                count = get_reflect_member_size(member)
+                dsets.append((mode, set, binding, type, count))
 
-    return descriptorsets
+    return dsets
 
 
 def check_for_errors_single_descriptorsets(
-    id: str, descriptorsets: List[Tuple[str, int, int, str, int]]
+    id: str, dsets: List[Tuple[str, int, int, str, int]]
 ):
-    for i, d in enumerate(descriptorsets):
-        if i == len(descriptorsets) - 1:
+    for i, dset in enumerate(dsets):
+        if i == len(dsets) - 1:
             break
-        mode1, set1, binding1, dtype1, count1 = d
-        for e in descriptorsets[i + 1 :]:
+        mode1, set1, binding1, dtype1, count1 = dset
+        for e in dsets[i + 1 :]:
             mode2, set2, binding2, dtype2, count2 = e
             if set1 == set2 and binding1 == binding2 and mode1 == mode2:
                 raise ValueError(
@@ -87,16 +87,12 @@ def check_for_errors_single_descriptorsets(
                 )
 
 
-def check_for_errors_group_descriptorsets(
-    descriptorsets_group: Dict[str, List[Tuple[str, int, int, str, int]]],
-):
-    for k in descriptorsets_group.items():
-        print(type(k), k)
-    for i, (id, descriptorsets) in enumerate(descriptorsets_group.items()):
-        if i == len(descriptorsets_group) - 1:
+def check_for_errors_group_descriptorsets(shader_combo_dsets: Dict[str, List[Tuple]],):
+    for i, (id, dsets) in enumerate(shader_combo_dsets.items()):
+        if i == len(shader_combo_dsets) - 1:
             break
-        for mode1, set1, binding1, dtype1, count1 in descriptorsets:
-            for j, (id2, descriptorsets2) in enumerate(descriptorsets_group.items()):
+        for mode1, set1, binding1, dtype1, count1 in dsets:
+            for j, (id2, descriptorsets2) in enumerate(shader_combo_dsets.items()):
                 if j < i + 1:
                     continue
                 for mode2, set2, binding2, dtype2, count2 in descriptorsets2:
@@ -111,61 +107,70 @@ def check_for_errors_group_descriptorsets(
                             f"different types {dtype1}, {dtype2} in {id}, {id2} shaders"
                         )
 
-
-def condense_group(
-    descriptorset_group: Dict[str, List[Tuple[str, int, int, str, int]]],
-) -> List[Tuple[str, int, int, str, int]]:
+def descriptorset_dict_to_list(dset_group: dict,):
     sets = set()
-    for id, descriptorsets in descriptorset_group.items():
-        for d in descriptorsets:
-            sets.add(d)
+    for _, dsets in dset_group.items():
+        for dset in dsets:
+            sets.add(dset)
     return list(sets)
 
 
-def build_descriptorset_layout(
-    descriptorset_group: Dict[str, List[Tuple[str, int, int, str, int]]],
-) -> List[dict]:
-    bindings: Dict[Tuple, dict] = {}
+def create_descriptorset_layout_per_dset_group(dset_group: dict,) -> List[dict]:
+    layouts: Dict[Tuple, dict] = {}
 
-    condensed_descriptorsets = condense_group(descriptorset_group)
+    dset_list = descriptorset_dict_to_list(dset_group)
 
-    for d in condensed_descriptorsets:
-        mode, dset, binding, dtype, count = d
-        key = (dset, binding, dtype, count)
-        if key in bindings:
-            current = bindings[key]
-            if not mode in current['stages']:
-                current['stages'].append(mode)
+    for dset in dset_list:
+        d_mode, d_set, d_binding, d_type, d_count = dset
+        key = (d_set, d_binding, d_type, d_count)
+        if key in layouts:
+            current = layouts[key]
+            if not d_mode in current[LAYOUT.STAGES]:
+                current[LAYOUT.STAGES].append(d_mode)
         else:
             binding = {
-                'set': dset,
-                'binding' : binding,
-                'type' : dtype,
-                'count' : count,
-                'stages' : [mode]
+                LAYOUT.SET    :  d_set,
+                LAYOUT.BIND   :  d_binding,
+                LAYOUT.TYPE   :  d_type,
+                LAYOUT.COUNT  :  d_count,
+                LAYOUT.STAGES : [d_mode]
             }
-            bindings[key] = binding
+            layouts[key] = binding
 
-    return [value for key, value in bindings.items()]
+    return [value for key, value in layouts.items()]
 
+def combine_descriptorset_layouts(layouts: Dict[Tuple, dict]):
+    new_layouts = {}
+    for key in layouts:
+        if not key in new_layouts:
+            new_layouts[key] = layouts[key]
+        else:
+            new_layouts[key][LAYOUT.STAGES].extend(layouts[key][LAYOUT.STAGES])
+            new_layouts[key][LAYOUT.STAGES] = list(set([key][LAYOUT.STAGES]))
 
-def create_layout(fc: VkForgeConfig, sc: VkForgeShaderConfig) -> VkForgeLayout:
-    bindings: List[dict] = []
+def create_descriptorset_layouts_from_list_of_shader_dsets(shader_dset_list: List[dict]):
+    layouts = []
+    for shader_dset in shader_dset_list:
+        layouts.append(create_descriptorset_layout_per_dset_group(shader_dset))
 
-    for shader_group in sc.combinations:
-        descriptorsets_group = {}
-        for id in shader_group:
-            sd: ShaderDetail = sc.details.get(id)
-            R = sd.r  # reflect
-            print_warnings(id, R)
-            raise_errors(id, R)
+def create_descriptorset_layouts(fm: VkForgeModel, sd: dict):
+    shader_dset_list = []
 
-            descriptorsets = generate_descriptorsets(sd)
-            check_for_errors_single_descriptorsets(id, descriptorsets)
+    for shader_combo in sd[SHADER.COMBO]:
+        shader_combo_dsets = {}
 
-            descriptorsets_group[id] = descriptorsets
-        check_for_errors_group_descriptorsets(descriptorsets_group)
+        for id in shader_combo:
+            shader = sd[SHADER.LIST].get(id)
+            reflect = shader[SHADER.REFLECT]
 
-        bindings.extend(build_descriptorset_layout(descriptorsets_group))
+            print_unsupported_warning(id, reflect)
+            raise_unrecognized_error(id, reflect)
 
-    return bindings
+            dsets = create_descriptorsets(shader)
+            check_for_errors_single_descriptorsets(id, dsets)
+
+            shader_combo_dsets[id] = dsets
+        check_for_errors_group_descriptorsets(shader_combo_dsets)
+        shader_dset_list.append(shader_combo_dsets)
+
+    return create_descriptorset_layouts_from_list_of_shader_dsets(shader_dset_list)

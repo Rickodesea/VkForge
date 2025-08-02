@@ -1,4 +1,4 @@
-from vkforge import VkForgeConfig
+from vkforge import VkForgeModel
 import yaml
 
 yml_string = """
@@ -20,7 +20,7 @@ Pipeline:
 
 def test_forge_config():
     raw_data = yaml.safe_load(yml_string)
-    forgeConfig = VkForgeConfig(**raw_data)
+    forgeConfig = VkForgeModel(**raw_data)
 
     assert forgeConfig.namespace == "basic_renderer_"
     assert forgeConfig.namestyle == "snake_case"

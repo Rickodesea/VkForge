@@ -106,10 +106,11 @@ DYNAMIC_STATE_MAP = {
 
 from enum import Enum
 
-
-class F(str, Enum):
+class StringEnum(str, Enum):
     def __format__(self, format_spec):
         return format(self.value, format_spec)
+
+class F(StringEnum):
     
     DEBUG_MSG_CALLBACK = "VkForge_DebugMsgCallback"
     DEBUG_MSG_INFO = "VkForge_GetDebugUtilsMessengerCreateInfo"
@@ -133,22 +134,40 @@ class FT(str, Enum):
     RESULT_ENUM = "VKFORGE_RESULT_ENUM"
 
 
-class S(str, Enum):
-    def __format__(self, format_spec):
-        return format(self.value, format_spec)
-    
-    # types
-    TEX = "textures"
-    TEX_IMG = "separate_images"
-    TEX_SAM = "separate_samplers"
-    IMG = "images"
-    SSBO = "ssbos"
-    UBO = "ubos"
-    # subpass
-    SUBPASS = "subpass_inputs"
-    # vertices
-    IN = "inputs"
-    OUT = "outputs"
-    # details
-    ENTRY = "entryPoints"
-    TYPE = "types"
+class SHADER(StringEnum):
+    MODE      = "mode"
+    ENTRYNAME = "entryname"
+    BINPATH   = "binary_path"
+    SRCPATH   = "source_path"
+    REFLECT   = "reflect"
+    LIST      = "shader_list"
+    COMBO     = "shader_combinations"
+
+class LAYOUT(StringEnum):
+    STAGES = "stages"
+    SET    = "set"
+    BIND   = "binding"
+    TYPE   = "type"
+    COUNT  = "count"
+
+class REFLECT(StringEnum):
+    TEXTURE       = "textures"
+    SAMPLER_IMAGE = "separate_images"
+    SAMPLER       = "separate_samplers"
+    IMAGE         = "images"
+    SSBO          = "ssbos"
+    UBO           = "ubos"
+    SUBPASS       = "subpass_inputs"
+    INPUT         = "inputs"
+    OUTPUT        = "outputs"
+    ENTRYPOINT    = "entryPoints"
+    TYPE          = "types"
+
+class MEMBER(StringEnum):
+    TYPE = "type"
+    NAME = "name"
+    ARRAY = "array"
+    ARRAY_LITERAL = "array_size_is_literal"
+    SET = "set"
+    BIND = "binding"
+
