@@ -144,11 +144,13 @@ class SHADER(StringEnum):
     COMBO     = "shader_combinations"
 
 class LAYOUT(StringEnum):
-    STAGES = "stages"
-    SET    = "set"
-    BIND   = "binding"
-    TYPE   = "type"
-    COUNT  = "count"
+    STAGES      = "stages"
+    SET         = "set"
+    BIND        = "binding"
+    TYPE        = "type"
+    COUNT       = "count"
+    DSET_LAYOUT = "descriptorset_layouts"
+    DSET_REF    = "descriptorset_layout_references"
 
 class REFLECT(StringEnum):
     TEXTURE       = "textures"

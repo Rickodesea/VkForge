@@ -6,37 +6,43 @@ from pathlib import Path
 from .schema import VkForgeModel
 from .shader import load_shader_data
 from typing import Any
-from dataclasses import is_dataclass, asdict, fields
+from dataclasses import is_dataclass, fields
 from pydantic import BaseModel
 from pathlib import Path
 from .context import VkForgeContext
-from .layout import VkForgeLayout, create_descriptorset_layouts
+from .layout import create_pipeline_layouts
 from .writer import Generate
 
 
 def deep_serialize(obj: Any) -> Any:
     if isinstance(obj, dict):
-        return {k: deep_serialize(v) for k, v in obj.items()}
+        new_dict = {}
+        for k, v in obj.items():
+            # Convert tuple keys to strings
+            if isinstance(k, tuple):
+                new_key = str(k)
+            else:
+                new_key = k
+            new_dict[new_key] = deep_serialize(v)
+        return new_dict
 
     elif isinstance(obj, list):
         return [deep_serialize(v) for v in obj]
 
     elif isinstance(obj, tuple):
-        return tuple(deep_serialize(v) for v in obj)
+        return [deep_serialize(v) for v in obj]  # Optionally keep as tuple
 
     elif isinstance(obj, set):
-        return {deep_serialize(v) for v in obj}
+        return [deep_serialize(v) for v in obj]  # sets → list for JSON
 
     elif isinstance(obj, Path):
         return str(obj)
 
     elif isinstance(obj, BaseModel):
-        # Recursively deep-walk model fields BEFORE dumping
         values = {k: deep_serialize(v) for k, v in obj.model_dump().items()}
         return values
 
     elif is_dataclass(obj):
-        # Recursively deep-walk dataclass fields BEFORE dumping
         data = {f.name: deep_serialize(getattr(obj, f.name)) for f in fields(obj)}
         return data
 
@@ -96,10 +102,14 @@ def main():
     shaderData = load_shader_data(
         args.config_roots, args.build_dir, forgeModel
     )
-    layout = create_descriptorset_layouts(forgeModel, shaderData)
+    layout = create_pipeline_layouts(forgeModel, shaderData)
 
     context = VkForgeContext(
-        args.source_dir, args.build_dir, forgeModel, shaderData, layout
+        args.source_dir, 
+        args.build_dir, 
+        forgeModel, 
+        shaderData, 
+        layout
     )
 
     print(json.dumps(deep_serialize(context), indent=4))

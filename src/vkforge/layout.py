@@ -1,10 +1,15 @@
 from .schema import VkForgeModel
 from .mappings import *
 from typing import List, Tuple, Dict
+import hashlib
 
+def hash_tuple(t: tuple) -> str:
+    b = repr(t).encode('utf-8')
+    h = hashlib.md5(b).hexdigest() #FIXME: use longer code such as sha256
+    return h
 
 def print_unsupported_warning(id: str, reflect: dict):
-    unsupported = [SHADER.SUBPASS]
+    unsupported = [REFLECT.SUBPASS]
     for r in reflect.keys():
         if r in unsupported:
             print(f"WARNING: VkForge does not support {r} in shader {id}.")
@@ -72,105 +77,118 @@ def create_descriptorsets(shader: dict):
     return dsets
 
 
-def check_for_errors_single_descriptorsets(
-    id: str, dsets: List[Tuple[str, int, int, str, int]]
-):
-    for i, dset in enumerate(dsets):
-        if i == len(dsets) - 1:
-            break
-        mode1, set1, binding1, dtype1, count1 = dset
-        for e in dsets[i + 1 :]:
-            mode2, set2, binding2, dtype2, count2 = e
+def check_for_errors_single_descriptorsets(id: str, dsets: List[Tuple]):
+    for i, dset1 in enumerate(dsets[:-1]):
+        mode1, set1, binding1, type1, count1 = dset1
+        for dset2 in dsets[i + 1:]:
+            mode2, set2, binding2, type2, count2 = dset2
             if set1 == set2 and binding1 == binding2 and mode1 == mode2:
                 raise ValueError(
-                    f"set {set1} and binding {binding1} overlapped for shader {id}"
+                    f"set {set1}, binding {binding1}, mode {mode1} overlapped for shader {id}"
                 )
 
 
-def check_for_errors_group_descriptorsets(shader_combo_dsets: Dict[str, List[Tuple]],):
-    for i, (id, dsets) in enumerate(shader_combo_dsets.items()):
-        if i == len(shader_combo_dsets) - 1:
-            break
-        for mode1, set1, binding1, dtype1, count1 in dsets:
-            for j, (id2, descriptorsets2) in enumerate(shader_combo_dsets.items()):
-                if j < i + 1:
-                    continue
-                for mode2, set2, binding2, dtype2, count2 in descriptorsets2:
-                    if set1 == set2 and binding1 == binding2 and mode1 == mode2:
-                        raise ValueError(
-                            f"set {set1} and binding {binding1} overlapped for shaders {id} and {id2}. "
-                            f"This is not allowed since bother shaders are grouped together in a single pipeline."
-                        )
-                    elif set1 == set2 and binding1 == binding2 and dtype1 != dtype2:
-                        raise ValueError(
-                            f"set {set1} and binding {binding1} have "
-                            f"different types {dtype1}, {dtype2} in {id}, {id2} shaders"
-                        )
+def check_for_errors_group_descriptorsets(shader_groups: Dict, shader_dsets: Dict,):
+    for pipeline_name, shader_ids in shader_groups.items():
+        dsets = []
+        dsets_shaderids = []
+        for shader_id in shader_ids:
+            if shader_id in shader_dsets:
+                dsets.extend(shader_dsets[shader_id])
+                dsets_shaderids.extend(shader_id)
+    
+    for i, dset1 in enumerate(dsets[:-1]):
+        for j, dset2 in enumerate(dsets[i+1:]):
+            mode1, set1, binding1, type1, count1 = dset1
+            mode2, set2, binding2, type2, count2 = dset2
+            shader_names = ', '.join([dsets_shaderids[i], dsets_shaderids[j]])
 
-def descriptorset_dict_to_list(dset_group: dict,):
-    sets = set()
-    for _, dsets in dset_group.items():
-        for dset in dsets:
-            sets.add(dset)
-    return list(sets)
+            if set1 == set2 and binding1 == binding2 and mode1 == mode2:
+                raise ValueError(
+                    f"Shaders {shader_names} are grouped together in pipeline {pipeline_name} "
+                    f"but the mode {mode1} is duplicated. There must be 1 unique mode per shader"
+                )
+            if set1 == set2 and binding1 == binding2 and type1 != type2:
+                raise ValueError(
+                    f"Shaders {shader_names} are grouped together in pipeline {pipeline_name} "
+                    f"but set {set1} and binding {binding1} have different types "
+                    f"{type1}, {type2} across the shaders. If shaders share the same "
+                    f"set and binding then the type and count must match."
+                )
+            if set1 == set2 and binding1 == binding2 and count1 != count2:
+                raise ValueError(
+                    f"Shaders {shader_names} are grouped together in pipeline {pipeline_name} "
+                    f"but set {set1} and binding {binding1} have different types "
+                    f"{count1}, {count2} across the shaders. If shaders share the same "
+                    f"set and binding then the type and count must match."
+                )
 
+def create_descriptorset_layouts(dsets_list: List[List[Tuple]]):
+    dset_layout_dict = {}
+    dset_layout_seen = set()
 
-def create_descriptorset_layout_per_dset_group(dset_group: dict,) -> List[dict]:
-    layouts: Dict[Tuple, dict] = {}
-
-    dset_list = descriptorset_dict_to_list(dset_group)
-
-    for dset in dset_list:
-        d_mode, d_set, d_binding, d_type, d_count = dset
-        key = (d_set, d_binding, d_type, d_count)
-        if key in layouts:
-            current = layouts[key]
-            if not d_mode in current[LAYOUT.STAGES]:
-                current[LAYOUT.STAGES].append(d_mode)
-        else:
-            binding = {
-                LAYOUT.SET    :  d_set,
-                LAYOUT.BIND   :  d_binding,
-                LAYOUT.TYPE   :  d_type,
-                LAYOUT.COUNT  :  d_count,
-                LAYOUT.STAGES : [d_mode]
+    for dset in dsets_list:
+        mode1, set1, binding1, type1, count1 = dset
+        key = (set1, binding1, type1, count1)
+        if not key in dset_layout_seen:
+            dset_layout_seen.add(key)
+            dset_layout_dict[key] = {
+                LAYOUT.SET: set1,
+                LAYOUT.BIND: binding1,
+                LAYOUT.TYPE: type1,
+                LAYOUT.STAGES: [mode1]
             }
-            layouts[key] = binding
-
-    return [value for key, value in layouts.items()]
-
-def combine_descriptorset_layouts(layouts: Dict[Tuple, dict]):
-    new_layouts = {}
-    for key in layouts:
-        if not key in new_layouts:
-            new_layouts[key] = layouts[key]
         else:
-            new_layouts[key][LAYOUT.STAGES].extend(layouts[key][LAYOUT.STAGES])
-            new_layouts[key][LAYOUT.STAGES] = list(set([key][LAYOUT.STAGES]))
+            stages = dset_layout_dict[key][LAYOUT.STAGES]
+            stages.append(mode1)
+            dset_layout_dict[key][LAYOUT.STAGES] = list(set(stages))
+    return dset_layout_dict
+    
+def create_pipeline_descriptorset_layouts(shader_groups: Dict, shader_dsets: Dict,):
+    pipelines_dset_layouts = {}
+    for pipeline_name, shader_ids in shader_groups.items():
+        dsets_list = []
+        for shader_id in shader_ids:
+            dsets_list.extend(shader_dsets[shader_id])
+        dset_layouts = create_descriptorset_layouts(dsets_list)
+        pipelines_dset_layouts[pipeline_name] = dset_layouts
+    return pipelines_dset_layouts
 
-def create_descriptorset_layouts_from_list_of_shader_dsets(shader_dset_list: List[dict]):
-    layouts = []
-    for shader_dset in shader_dset_list:
-        layouts.append(create_descriptorset_layout_per_dset_group(shader_dset))
+def combine_pipeline_descriptorset_layouts(pipeline_dset_layouts_dict: Dict[str, List]):
+    layouts = {}
+    references = {}
 
-def create_descriptorset_layouts(fm: VkForgeModel, sd: dict):
-    shader_dset_list = []
+    for pipeline_name, dset_layouts_dict in pipeline_dset_layouts_dict.items():
+        for dset_key, dset_layout in dset_layouts_dict.items():
+            key = hash_tuple(dset_key)
+            if not dset_key in layouts:
+                layouts[key] = dset_layout
+            else:
+                stages = layouts[key][LAYOUT.STAGES]
+                stages.extend(dset_layout[key][LAYOUT.STAGES])
+                layouts[key][LAYOUT.STAGES] = list(set(stages))
+            if not pipeline_name in references:
+                references[pipeline_name] = set()
+            references[pipeline_name].add(key)
+    return {
+        LAYOUT.DSET_LAYOUT: layouts,
+        LAYOUT.DSET_REF: references
+    }
 
-    for shader_combo in sd[SHADER.COMBO]:
-        shader_combo_dsets = {}
+def create_pipeline_layouts(fm: VkForgeModel, shaders: dict):
+    shader_dsets = {}
 
-        for id in shader_combo:
-            shader = sd[SHADER.LIST].get(id)
-            reflect = shader[SHADER.REFLECT]
+    for shader_id, shader_data in shaders[SHADER.LIST].items():
+        reflect = shader_data[SHADER.REFLECT]
 
-            print_unsupported_warning(id, reflect)
-            raise_unrecognized_error(id, reflect)
+        print_unsupported_warning(shader_id, reflect)
+        raise_unrecognized_error(shader_id, reflect)
 
-            dsets = create_descriptorsets(shader)
-            check_for_errors_single_descriptorsets(id, dsets)
+        dsets = create_descriptorsets(shader_data)
+        check_for_errors_single_descriptorsets(shader_id, dsets)
 
-            shader_combo_dsets[id] = dsets
-        check_for_errors_group_descriptorsets(shader_combo_dsets)
-        shader_dset_list.append(shader_combo_dsets)
+        shader_dsets[shader_id] = dsets
+    check_for_errors_group_descriptorsets(shaders[SHADER.COMBO], shader_dsets)
 
-    return create_descriptorset_layouts_from_list_of_shader_dsets(shader_dset_list)
+    pipeline_dset_layouts_dict = create_pipeline_descriptorset_layouts(shaders[SHADER.COMBO], shader_dsets)
+    return combine_pipeline_descriptorset_layouts(pipeline_dset_layouts_dict)

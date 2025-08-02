@@ -172,7 +172,7 @@ def get_shader_entrypoint(id: str, r: dict) -> Tuple[str, str]:
     return (name, mode)
 
 
-def validate_shader_combination(build_dir: str, shaders: List[dict]):
+def validate_shader_combination(build_dir: str, shader_list: List[dict]):
     try:
         subprocess.run(
             ["glslangValidator", "-h"],
@@ -187,7 +187,7 @@ def validate_shader_combination(build_dir: str, shaders: List[dict]):
     except subprocess.CalledProcessError:
         pass
 
-    shader_sources = [shader[SHADER.SRCPATH] for shader in shaders]
+    shader_sources = [shader[SHADER.SRCPATH] for shader in shader_list]
     build_dir = Path(build_dir)
     build_dir.mkdir(parents=True, exist_ok=True)
     output_file = build_dir / "validation" / ("shader_validation" + ".mod")  
@@ -210,16 +210,17 @@ def validate_shader_combination(build_dir: str, shaders: List[dict]):
 def load_shader_data(
     roots: List[str], build_dir: str, fm: VkForgeModel
 ):
-    shaders: Dict[dict] = {}
-    shader_combinations: List[list] = []
+    shader_list: Dict[dict] = {}
+    shader_combinations: Dict[str, List[list]] = {}
     shader_seen = set()
 
     for pipeline in fm.Pipeline:
-        pipeline_shaders = []
-        pipeline_combinations = []
+        pipeline_shader_list = []
+        pipline_shader_combinations = []
+
         for shader_module in pipeline.ShaderModule:
             id = shader_module.path
-            pipeline_combinations.append(id)
+            pipline_shader_combinations.append(id)
 
             if not id in shader_seen:
                 shader_seen.add(id)
@@ -259,15 +260,15 @@ def load_shader_data(
                     SHADER.REFLECT: spirv_reflect
                 }
 
-                shaders[id] = shader
+                shader_list[id] = shader
             else:
-                shader = shaders.get(id)
+                shader = shader_list.get(id)
                 if not shader:
                     raise ValueError(f"Could not find shader details for {id}")
-            pipeline_shaders.append(shader)
-        validate_shader_combination(build_dir, pipeline_shaders)
-        shader_combinations.append(pipeline_combinations)
+            pipeline_shader_list.append(shader)
+        validate_shader_combination(build_dir, pipeline_shader_list)
+        shader_combinations[pipeline.name] = pipline_shader_combinations
     return {
-        SHADER.LIST: shaders,
+        SHADER.LIST: shader_list,
         SHADER.COMBO: shader_combinations
     }
