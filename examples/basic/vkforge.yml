@@ -19,3 +19,18 @@ Pipeline:
     VertexInputBindingDescription:
       - stride: Vertex
         first_location: 0
+  - name: default
+    ShaderModule:
+      - path: default.vert
+      - path: default.frag
+    VertexInputBindingDescription:
+      - stride: sizeof(long)
+        first_location: 0
+  - name: mix
+    ShaderModule:
+      - path: default.vert
+      - path: frag.frag
+    VertexInputBindingDescription:
+      - stride: sizeof(long)
+        first_location: 0
+

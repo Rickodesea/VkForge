@@ -69,10 +69,10 @@ def create_descriptorsets(shader: dict):
                 type = member[MEMBER.TYPE]
                 if REFLECT.TYPE in reflect and type in reflect[REFLECT.TYPE]:
                     type = dset_type
-                set = member[MEMBER.SET]
+                set1 = member[MEMBER.SET]
                 binding = member[MEMBER.BIND]
                 count = get_reflect_member_size(member)
-                dsets.append((mode, set, binding, type, count))
+                dsets.append((mode, set1, binding, type, count))
 
     return dsets
 
@@ -94,11 +94,12 @@ def check_for_errors_group_descriptorsets(shader_groups: Dict, shader_dsets: Dic
         dsets_shaderids = []
         for shader_id in shader_ids:
             if shader_id in shader_dsets:
-                dsets.extend(shader_dsets[shader_id])
-                dsets_shaderids.extend(shader_id)
+                for shader_dset in shader_dsets[shader_id]:
+                    dsets.append(shader_dset)
+                    dsets_shaderids.append(shader_id)
     
     for i, dset1 in enumerate(dsets[:-1]):
-        for j, dset2 in enumerate(dsets[i+1:]):
+        for j, dset2 in enumerate(dsets[i+1:], start=i+1):
             mode1, set1, binding1, type1, count1 = dset1
             mode2, set2, binding2, type2, count2 = dset2
             shader_names = ', '.join([dsets_shaderids[i], dsets_shaderids[j]])
@@ -136,12 +137,12 @@ def create_descriptorset_layouts(dsets_list: List[List[Tuple]]):
                 LAYOUT.SET: set1,
                 LAYOUT.BIND: binding1,
                 LAYOUT.TYPE: type1,
-                LAYOUT.STAGES: [mode1]
+                LAYOUT.COUNT: count1,
+                LAYOUT.STAGES: {mode1}
             }
         else:
             stages = dset_layout_dict[key][LAYOUT.STAGES]
-            stages.append(mode1)
-            dset_layout_dict[key][LAYOUT.STAGES] = list(set(stages))
+            stages.add(mode1)
     return dset_layout_dict
     
 def create_pipeline_descriptorset_layouts(shader_groups: Dict, shader_dsets: Dict,):
@@ -154,6 +155,89 @@ def create_pipeline_descriptorset_layouts(shader_groups: Dict, shader_dsets: Dic
         pipelines_dset_layouts[pipeline_name] = dset_layouts
     return pipelines_dset_layouts
 
+def optimize_pipeline_layouts(data: dict) -> dict:
+    def fill_bind_slots(bind:int, type:str, count:int, stages:set, bind_slots:List[tuple]):
+        if bind < len(bind_slots):
+            if bind_slots[bind]:
+                slot_type, slot_count, slot_stages = bind_slots[bind]
+                if type == slot_type and count == slot_count:
+                    if not stages in slot_stages:
+                        stages.union(slot_stages)
+                    bind_slots[bind] = (type, count, stages)
+                    return True
+                else:
+                    return False
+            else:
+                bind_slots[bind] = (type, count, stages)
+                return True
+        else:
+            bind_slots.extend([None] * (bind + 1))
+            bind_slots[bind] = (type, count, stages)
+            return True
+    
+    def fill_set_slots(set1: int, bind:int, type:str, count:int, stages:set, set_slots:List[list]):
+        if set1 < len(set_slots):
+            if not set_slots[set1]:
+                set_slots[set1] = []
+            return fill_bind_slots(bind, type, count, stages, set_slots[set1])
+        else:
+            set_slots.extend([None] * (set1 - len(set_slots) + 1))
+            set_slots[set1] = []
+            return fill_bind_slots(bind, type, count, stages, set_slots[set1])
+        
+    dset_dict = data[LAYOUT.DSET_LAYOUT]
+    reference_dict = data[LAYOUT.DSET_REF]
+
+    layouts = [] # Each item is a Pipeline Layout
+    references = {} # Reference for the Optimized Layout
+
+    current = [] # Current Pipeline Layout being build. Each Item is a DescriptorSet
+    previous = []
+
+    pipeline_index = 0
+    pipeline_names = list(reference_dict.keys())
+
+    while(pipeline_index < len(reference_dict.keys())):
+        pipeline_name = pipeline_names[pipeline_index]
+        hash_list = reference_dict[pipeline_name]
+
+        previous = current.copy()
+        incompletePipeline = False
+
+        for hash in hash_list:
+            dset_data = dset_dict[hash]
+            set1 = dset_data[LAYOUT.SET]
+            bind = dset_data[LAYOUT.BIND]
+            type = dset_data[LAYOUT.TYPE]
+            count = dset_data[LAYOUT.COUNT]
+            stages = dset_data[LAYOUT.STAGES]
+
+            if fill_set_slots(set1, bind, type, count, stages, current):
+                continue
+            else:
+                incompletePipeline = True
+                break
+
+        if incompletePipeline == True:
+            if previous:
+                layouts.append(previous)
+                current = []
+                continue
+            else:
+                break # now descriptor layout exists
+        else:
+            references[pipeline_name] = len(layouts)
+        pipeline_index += 1
+    
+    if current:
+        layouts.append(current)
+
+    return {
+        "layouts": layouts,
+        "references": references
+    }
+
+
 def combine_pipeline_descriptorset_layouts(pipeline_dset_layouts_dict: Dict[str, List]):
     layouts = {}
     references = {}
@@ -161,18 +245,22 @@ def combine_pipeline_descriptorset_layouts(pipeline_dset_layouts_dict: Dict[str,
     for pipeline_name, dset_layouts_dict in pipeline_dset_layouts_dict.items():
         for dset_key, dset_layout in dset_layouts_dict.items():
             key = hash_tuple(dset_key)
-            if not dset_key in layouts:
+            if not key in layouts:
                 layouts[key] = dset_layout
             else:
-                stages = layouts[key][LAYOUT.STAGES]
-                stages.extend(dset_layout[key][LAYOUT.STAGES])
-                layouts[key][LAYOUT.STAGES] = list(set(stages))
+                layouts[key][LAYOUT.STAGES].union(dset_layout[LAYOUT.STAGES])
             if not pipeline_name in references:
                 references[pipeline_name] = set()
             references[pipeline_name].add(key)
-    return {
+    pipeline_descriptorset_layouts =  {
         LAYOUT.DSET_LAYOUT: layouts,
         LAYOUT.DSET_REF: references
+    }
+    pipeline_layouts = optimize_pipeline_layouts(pipeline_descriptorset_layouts)
+
+    return {
+        LAYOUT.RAW_LAYOUT: pipeline_descriptorset_layouts,
+        LAYOUT.PIPELINE_LAYOUT: pipeline_layouts
     }
 
 def create_pipeline_layouts(fm: VkForgeModel, shaders: dict):
