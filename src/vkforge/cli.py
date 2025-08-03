@@ -95,6 +95,12 @@ def main():
         help="The build directory of your project. VkForge can share your project's build directory or it can point to a unique build directory for VkForge. Think of CMake's build directory.",
     )
 
+    parser.add_argument(
+        "--remove-validations",
+        action="store_true",
+        help="If set, disables Vulkan validation layers (useful for release builds)."
+    )
+
     args = parser.parse_args()
     raw_data = load_file(args.config_path)
 
@@ -105,6 +111,7 @@ def main():
     layout = create_pipeline_layouts(forgeModel, shaderData)
 
     context = VkForgeContext(
+        args.remove_validations,
         args.source_dir, 
         args.build_dir, 
         forgeModel, 

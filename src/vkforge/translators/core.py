@@ -1,8 +1,49 @@
 from vkforge.context import VkForgeContext
-from vkforge.mappings import F, FT
+from vkforge.mappings import *
 
 
 def CreateInstance(ctx: VkForgeContext) -> str:
+    define_validation_layers = "/** NO VALIDATIONS **/"
+    define_debug_messenger = "/** NO DEBUG MESSENGER **/"
+    define_best_practices = "/** NO BEST PRACTICES **/"
+    layer_buffer = "0"
+    layer_count = "0"
+    next = "next"
+
+    if not ctx.removeValidations:
+        define_validation_layers = """\
+const char* layers[] =
+    {{
+        "VK_LAYER_KHRONOS_validation"
+    }};
+
+    const uint32_t layers_count = sizeof(layers) / sizeof(layers[0]);\
+"""
+        layer_buffer = "layers"
+        layer_count = "layers_count"
+
+        define_debug_messenger = """\
+VkDebugUtilsMessengerCreateInfoEXT msgCreateInfo = {debugInfo}();\
+""".format(debugInfo=FUNC_NAME.DEBUG_INFO)
+        
+        next = "&msgCreateInfo;\n\tmsgCreateInfo.pNext=next"
+    
+    if not ctx.removeValidations and ctx.forgeModel.InstanceCreateInfo.useValidationFeatureEnableBestPracticesEXT:
+        define_best_practices = """\
+VkValidationFeatureEnableEXT enables[] =
+    {{
+        VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT
+    }};
+
+    VkValidationFeaturesEXT validationFeatures       = {{0}};
+    validationFeatures.sType                         = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+    validationFeatures.enabledValidationFeatureCount = 1;
+    validationFeatures.pEnabledValidationFeatures    = enables;
+
+    validationFeatures.pNext = &msgCreateInfo;\
+"""
+        next = "&validationFeatures;\n\tvalidationFeatures.pNext=next"
+        
     content = """\
 void {name}
 (
@@ -20,40 +61,26 @@ void {name}
     uint32_t extensions_count = 0;
     const char *const * extensions = SDL_Vulkan_GetInstanceExtensions(&extensions_count);
 
-    const char* layers[] =
-    {{
-        "VK_LAYER_KHRONOS_validation"
-    }};
+    {define_validation_layers}
 
-    const uint32_t layers_count = sizeof(layers) / sizeof(layers[0]);
+    {define_debug_messenger}
 
-    VkValidationFeatureEnableEXT enables[] =
-    {{
-        VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT
-    }};
-
-    VkValidationFeaturesEXT validation_features = {{0}};
-    validation_features.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
-    validation_features.enabledValidationFeatureCount = 1;
-    validation_features.pEnabledValidationFeatures = enables;
-
-    VkDebugUtilsMessengerCreateInfoEXT msgCreateInfo = {debugInfo}();
-    validation_features.pNext = &msgCreateInfo;
+    {define_best_practices}
 
     VkApplicationInfo appInfo = {{0}};
-    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.apiVersion = {version};
-    appInfo.pEngineName = "{engine}";
-    appInfo.pApplicationName = "{appName}";
+    appInfo.sType             = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    appInfo.apiVersion        = {version};
+    appInfo.pEngineName       = "{engine}";
+    appInfo.pApplicationName  = "{appName}";
 
-    VkInstanceCreateInfo createInfo = {{0}};
-    createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    createInfo.pApplicationInfo = &appInfo;
-    createInfo.enabledExtensionCount = extensions_count;
+    VkInstanceCreateInfo createInfo    = {{0}};
+    createInfo.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    createInfo.pApplicationInfo        = &appInfo;
+    createInfo.enabledExtensionCount   = extensions_count;
     createInfo.ppEnabledExtensionNames = extensions;
-    createInfo.enabledLayerCount = layers_count;
-    createInfo.ppEnabledLayerNames = layers;
-    createInfo.pNext = &validation_features;
+    createInfo.enabledLayerCount       = {layer_count};
+    createInfo.ppEnabledLayerNames     = {layer_buffer};
+    createInfo.pNext                   = {next};
 
     result = vkCreateInstance(&createInfo, 0, &instance);
 
@@ -68,15 +95,19 @@ void {name}
 
 """
     output = content.format(
-        name="CreateInstance",
-        debugInfo=F.DEBUG_MSG_INFO,
-        version=ctx.forgeConfig.ApplicationInfo.apiVersion,
-        engine=ctx.forgeConfig.ApplicationInfo.pEngineName,
-        appName=ctx.forgeConfig.ApplicationInfo.pApplicationName,
+        name=FUNC_NAME.INSTANCE,
+        define_validation_layers=define_validation_layers,
+        define_best_practices=define_best_practices,
+        define_debug_messenger=define_debug_messenger,
+        version=map_value(API_VERSION_MAP, ctx.forgeModel.ApplicationInfo.apiVersion),
+        engine=ctx.forgeModel.ApplicationInfo.pEngineName,
+        appName=ctx.forgeModel.ApplicationInfo.pApplicationName,
+        layer_count=layer_count,
+        layer_buffer=layer_buffer,
+        next=next
     )
 
     return output
-
 
 def CreateSurface(ctx: VkForgeContext) -> str:
     content = """\
@@ -107,10 +138,9 @@ void {name}
 
 
 """
-    output = content.format(name="CreateSurface")
+    output = content.format(name=FUNC_NAME.SURFACE)
 
     return output
-
 
 def CreateSelectPhysicalDevice(ctx: VkForgeContext) -> str:
     content = """\
@@ -119,7 +149,7 @@ void {name}(VkInstance instance, VkSurfaceKHR surface, VkPhysicalDevice* inPhysi
     static_assert(inPhysicalDevice, "inPhysicalDevice can not be null.");
     static_assert(inQueueFamilyIndex, "inQueueFamilyIndex can not be null.");
 
-    VULKAN_ENUM(physical_dev, VkPhysicalDevice, vkEnumeratePhysicalDevices, 32, instance);
+    {enum}(physical_dev, VkPhysicalDevice, vkEnumeratePhysicalDevices, 32, instance);
 
         uint32_t best_score = 0;
     VkPhysicalDevice best_physical_dev = VK_NULL_HANDLE;
@@ -129,7 +159,7 @@ void {name}(VkInstance instance, VkSurfaceKHR surface, VkPhysicalDevice* inPhysi
     {{
                 VkPhysicalDeviceProperties physical_dev_prop = {{0}};
                 vkGetPhysicalDeviceProperties(physical_dev_buffer[i], &physical_dev_prop);
-        VULKAN_ENUM(queue_fam_prop, VkQueueFamilyProperties, vkGetPhysicalDeviceQueueFamilyProperties, 32, physical_dev_buffer[i]);
+        {enum}(queue_fam_prop, VkQueueFamilyProperties, vkGetPhysicalDeviceQueueFamilyProperties, 32, physical_dev_buffer[i]);
                 uint32_t score = {score}(physical_dev_prop.limits);
 
                 for (uint32_t j = 0; j < queue_fam_prop_count; j++) {{
@@ -160,13 +190,28 @@ void {name}(VkInstance instance, VkSurfaceKHR surface, VkPhysicalDevice* inPhysi
 }}
 """
     output = content.format(
-        name=F.SELECT_PHYSICAL_DEVICE, score=F.SCORE_PHYSICAL_DEVICE
+        name=FUNC_NAME.SELECT, 
+        enum=FUNC_NAME.ENUM,
+        score=FUNC_NAME.SCORE
     )
 
     return output
 
 
 def CreateDevice(ctx: VkForgeContext) -> str:
+    enabledFeaturesDefinition = "/** NO ENABLED FEATURES **/"
+    enabledFeatures = "0"
+
+    features = ctx.forgeModel.DeviceCreateInfo.PhysicalDeviceFeatures
+
+    if features:
+        enabledFeaturesDefinition = "VkPhysicalDeviceFeatures enabledFeatures = {0};"
+        lines = []
+        for key, value in features:
+            if value:
+                enabledFeaturesDefinition += f"\n\tenabledFeatures.{key} = VK_TRUE;"
+                enabledFeatures = "&enabledFeatures"
+
     content = """\
 void {name}
 (
@@ -289,12 +334,15 @@ void {name}
     vk13Features.synchronization2 = VK_TRUE;
     vk13Features.pNext = next;
 
+    {enabledFeaturesDefinition}
+
     VkDeviceCreateInfo createInfo = {{0}};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     createInfo.queueCreateInfoCount = 1;
     createInfo.pQueueCreateInfos = &queueCreateInfo;
     createInfo.enabledExtensionCount = req_ext_c;
     createInfo.ppEnabledExtensionNames = req_ext_b;
+    createInfo.pEnabledFeatures = {enabledFeatures};
     createInfo.pNext = &vk13Features;
 
     VkDevice device = VK_NULL_HANDLE;
@@ -317,14 +365,19 @@ void {name}
 }}
 
 """
-    output = content.format(name=F.DEVICE, enum=FT.ENUM)
+    output = content.format(
+        name=FUNC_NAME.DEVICE, 
+        enum=FUNC_NAME.ENUM,
+        enabledFeaturesDefinition=enabledFeaturesDefinition,
+        enabledFeatures=enabledFeatures
+    )
 
     return output
 
 
 def CreateSwapchain(ctx: VkForgeContext) -> str:
     content = """\
-void CreateSwapchain
+void {name}
 (
     VkAllocationCallbacks* allocator,
     void*                  next,
@@ -376,7 +429,7 @@ void CreateSwapchain
         exit(1);
     }}
 
-    VULKAN_RESULT_ENUM(
+    {enum}(
         images,
         VkImage,
         vkGetSwapchainImagesKHR,
@@ -421,7 +474,10 @@ void CreateSwapchain
 }}
 
 """
-    output = content.format()
+    output = content.format(
+        name=FUNC_NAME.SWAPCHAIN,
+        enum=FUNC_NAME.ENUM
+    )
 
     return output
 
@@ -488,7 +544,7 @@ void {name}
 }}
 
 """
-    output = content.format(name=F.COMMAND_BUFFERS)
+    output = content.format(name=FUNC_NAME.COMMAND_BUFFERS)
 
     return output
 

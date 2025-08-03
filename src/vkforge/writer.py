@@ -1,12 +1,11 @@
 import os
 from pathlib import Path
 from vkforge.context import VkForgeContext
-from vkforge.translators import GetCoreStrings
+from vkforge.translators import *
+from vkforge.mappings import *
 
-CORE_FILE = "core.c"
-TYPES_INCLUDE = '#include "types.h"'
-DECLARES_INCLUDE = '#include "declares.h"'
-
+TYPE_INCLUDE = f'#include "{FILE.TYPE}"'
+FUNC_INCLUDE = f'#include "{FILE.FUNC}"'
 
 def IncludeStandardHeaders():
     return """\
@@ -21,23 +20,22 @@ def WriteCMakeLists(ctx: VkForgeContext):
     pass
 
 
-def WriteCore(ctx: VkForgeContext):
+def Write_C_Definition_Module(ctx: VkForgeContext, filename, stringFunc):
     content = """\
 {standard_includes}
-{types_include}
-{declares_include}
+{type_include}
+{func_include}
 
 {code}
 
 """
     output = content.format(
         standard_includes=IncludeStandardHeaders(),
-        types_include=TYPES_INCLUDE,
-        declares_include=DECLARES_INCLUDE,
-        code="\n".join(GetCoreStrings(ctx)),
+        type_include=TYPE_INCLUDE,
+        func_include=FUNC_INCLUDE,
+        code="\n".join(stringFunc(ctx)),
     )
 
-    filename = CORE_FILE
     filepath = Path(ctx.sourceDir) / filename
     filepath.parent.mkdir(parents=True, exist_ok=True)
 
@@ -45,6 +43,6 @@ def WriteCore(ctx: VkForgeContext):
         f.write(output)
         print(f"Generated '{filepath}'")
 
-
 def Generate(ctx: VkForgeContext):
-    WriteCore(ctx)
+    Write_C_Definition_Module(ctx, FILE.CORE, GetCoreStrings)
+    Write_C_Definition_Module(ctx, FILE.UTIL, GetUtilStrings)

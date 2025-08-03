@@ -1,92 +1,22 @@
-void CreateSwapchain
+uint32_t GetSwapchainSize
 (
     VkPhysicalDevice physical_device,
     VkSurfaceKHR     surface,
-    VkDevice         device,
-    VkFormat         req_format,
-    uint32_t         req_swapchain_size,
-    VkPresentModeKHR req_present_mode,
-
-    VkSwapchainKHR*  retSwapchain,
-    uint32_t*        retSwapchainSize,
-    VkImage*         retSwapchainImages,
-    VkImageView*     retSwapchainImageViews
-)
+    uint32_t         req_size
+) 
 {
-    assert(retSwapchain);
-    assert(retSwapchainSize);
-    assert(retSwapchainImages);
-    assert(retSwapchainImageViews);
-
-    VkResult result;
-    VkSwapchainKHR swapchain = VK_NULL_HANDLE;
-
-    VkSurfaceFormatKHR surface_format = GetSurfaceFormat(physical_device, surface, req_format);
+    
     VkSurfaceCapabilitiesKHR surface_cap = GetSurfaceCapabilities(physical_device, surface);
 
-    VkSwapchainCreateInfoKHR createInfo = {0};
-    createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    createInfo.surface = surface;
-    createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    createInfo.minImageCount = GetSwapchainSize(physical_device, surface, req_swapchain_size);
-    createInfo.imageFormat = surface_format.format;
-    createInfo.imageExtent = surface_cap.currentExtent;
-    createInfo.imageArrayLayers = 1;
-    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    createInfo.imageColorSpace = surface_format.colorSpace;
-    createInfo.preTransform = surface_cap.currentTransform;
-    createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    createInfo.presentMode = GetPresentMode(physical_device, surface, req_present_mode);
-    createInfo.clipped = VK_TRUE;
-
-    result = vkCreateSwapchainKHR(device, &createInfo, 0, &swapchain);
-
-    if( VK_SUCCESS != result ) 
+    if ( surface_cap.maxImageCount == 0 ) 
     {
-        SDL_Log("Failed to create Swapchain.");
-        exit(1);
+        return req_size;
     }
 
-    VULKAN_RESULT_ENUM(
-        images,
-        VkImage, 
-        vkGetSwapchainImagesKHR, 
-        16,
-        device, 
-        swapchain
-    );
-
-    VkImage* swapchain_images = SDL_malloc(sizeof(VkImage) * images_count);
-    VkImageView* swapchain_image_views = SDL_malloc(sizeof(VkImageView) * images_count);
-    uint32_t swapchain_size = images_count;
-
-    SDL_memcpy(swapchain_images, images_buffer, images_count * sizeof(VkImage));
-
-    for(unsigned int i = 0; i < images_count; i++)
+    if (req_size <= surface_cap.maxImageCount) 
     {
-        VkImageSubresourceRange subres = {0};
-        subres.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        subres.levelCount = 1;
-        subres.layerCount = 1;
-
-        VkImageViewCreateInfo viewInfo = {0};
-        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        viewInfo.image = images_buffer[i];
-        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.format = surface_format.format;
-        viewInfo.subresourceRange = subres;
-
-        result = vkCreateImageView(device, &viewInfo, 0, &swapchain_image_views[i]);
-
-        if(VK_SUCCESS != result)
-        {
-            SDL_LogError(0, "Failed to create Swapchain %d image view", i);
-            exit(1);
-        }
+        return req_size;
     }
 
-    *retSwapchain = swapchain;
-    *retSwapchainImages = swapchain_images;
-    *retSwapchainImageViews = swapchain_image_views;
-    *retSwapchainSize = swapchain_size;
+    return surface_cap.minImageCount;
 }

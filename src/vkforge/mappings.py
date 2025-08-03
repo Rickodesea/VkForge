@@ -110,28 +110,36 @@ class StringEnum(str, Enum):
     def __format__(self, format_spec):
         return format(self.value, format_spec)
 
-class F(StringEnum):
-    
-    DEBUG_MSG_CALLBACK = "VkForge_DebugMsgCallback"
-    DEBUG_MSG_INFO = "VkForge_GetDebugUtilsMessengerCreateInfo"
-    SCORE_PHYSICAL_DEVICE = "VkForge_ScorePhysicalDeviceLimits"
-    SELECT_PHYSICAL_DEVICE = "VkForge_SelectPhysicalDevice"
-    SEMAPHORE = "VkForge_CreateVkSemaphore"
-    FENCE = "VkForge_CreateVkFence"
+class FUNC_NAME(StringEnum):
+    DEBUG_CALLBACK = "VkForge_DebugMsgCallback"
+    DEBUG_INFO = "VkForge_GetDebugUtilsMessengerCreateInfo"
+    SCORE = "VkForge_ScorePhysicalDeviceLimits"
+    SELECT = "VkForge_SelectPhysicalDevice"
+    SEMAPHORE = "VkForge_CreateSemaphore"
+    FENCE = "VkForge_CreateFence"
     DEVICE = "VkForge_CreateDevice"
     COMMAND_BUFFERS = "VkForge_CreateCommandBuffers"
     CACHE = "VkForge_GetCache"
+    IMAGE_BARRIER = "VkForge_CmdImageBarrier"
+    BUFFER_BARRIER = "VkForge_CmdBufferBarrier"
+    SURFACE = "VkForge_CreateSurface"
+    SURFACE_FORMAT = "VkForge_GetSurfaceFormat"
+    SURFACE_CAP = "VkForge_GetSurfaceCapabilities"
+    SWAPCHAIN = "VkForge_CreateSwapchain"
+    SWAPCHAIN_SIZE = "VkForge_GetSwapchainSize"
+    PRESENT_MODE = "VkForge_GetPresentMode"
+    MEMORY_TYPE = "VkForge_GetMemoryTypeIndex"
+    ENUM = "VKFORGE_ENUM"
+    VOID_ENUM = "VKFORGE_VOID_ENUM"
+    INSTANCE = "VkForge_CreateInstance"
 
 
-class FT(str, Enum):
-    def __format__(self, format_spec):
-        return format(self.value, format_spec)
-    
+class TYPE_NAME(StringEnum):
     FORGE = "VkForge"
     CACHE = "VkForgeCache"
     BUFFERALLOC = "VkForgeBufferAlloc"
+    VOID_ENUM = "VKFORGE_VOID_ENUM"
     ENUM = "VKFORGE_ENUM"
-    RESULT_ENUM = "VKFORGE_RESULT_ENUM"
 
 
 class SHADER(StringEnum):

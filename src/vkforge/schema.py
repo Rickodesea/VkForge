@@ -34,17 +34,14 @@ from typing import List, Optional, Literal, Union
 import re
 from .mappings import *
 
-class GenerateOnceModel(BaseModel):
-    pass
-
 class UserExternalModel(BaseModel):
     includeHeadersPreprocessor: Optional[List[str]] = Field(
-        default_factory=List[str],
+        default=None,
         description="#include of User headers. List the header names. If it is a standard header "
         "wrap in angle brackets. Eg: - MyHeader - <MyStandardHeader>"
     )
     insertDeclarations: Optional[List[str]] = Field(
-        default_factory=List[str],
+        default=None,
         description="Inserts user defined strings into the generated code. The code is expected to be "
         "declaration type code because it will be included in the generated headers."
         "There is no restriction on what it can be. You are responsible for it to compile. "
@@ -52,31 +49,16 @@ class UserExternalModel(BaseModel):
     )
 
 class VkInstanceCreateInfoModel(BaseModel):
-    ppEnabledLayerNames: Optional[
-        List[
-            Literal[
-                "VK_LAYER_KHRONOS_validation",
-                "VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT",
-            ]
-        ]
-    ] = Field(
-        default=["VK_LAYER_KHRONOS_validation"],
-        description=(
-            "List of Vulkan validation layers to enable. For example, "
-            "'VK_LAYER_KHRONOS_validation' enables standard validation, "
-            "and 'VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT' enables best practices validation."
-        ),
+    
+    useValidationFeatureEnableBestPracticesEXT: Optional[bool] = Field(
+        default=False,
+        description="Set to True to enable VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT"
     )
-
 
 class VkApplicationInfoModel(BaseModel):
     apiVersion: Optional[
         Literal[
-            # "VK_API_VERSION_1_0",
-            # "VK_API_VERSION_1_1",
-            # "VK_API_VERSION_1_2",
             "VK_API_VERSION_1_3",
-            # "1.0", "1.1", "1.2",
             "1.3",
         ]
     ] = Field(default="VK_API_VERSION_1_3", description="Vulkan API version to target.")
@@ -88,7 +70,6 @@ class VkApplicationInfoModel(BaseModel):
     )
     applicationVersion: Optional[int] = 0
     engineVersion: Optional[int] = 0
-
 
 class VkDebugUtilsMessengerCreateInfoEXTModel(BaseModel):
     messageSeverity: Optional[
@@ -130,19 +111,6 @@ class VkDebugUtilsMessengerCreateInfoEXTModel(BaseModel):
         ],
         description="List of message types to enable for debug messenger.",
     )
-
-
-class VkPhysicalDeviceVulkan13FeaturesModel(BaseModel):
-    dynamicRendering: Optional[bool] = Field(
-        default=True,
-        description="Enable dynamic rendering feature. Requires Vulkan >= 1.3.",
-    )
-    synchronization2: Optional[bool] = Field(
-        default=True,
-        description="Enable synchronization2 feature. Requires Vulkan >= 1.3.",
-    )
-    # only the above features are supported for the time being
-
 
 class VkPhysicalDeviceFeaturesModel(BaseModel):
     robustBufferAccess: Optional[bool] = False
@@ -219,19 +187,6 @@ class VkDeviceCreateInfoModel(BaseModel):
         elif "VK_KHR_swapchain" not in v:
             raise ValueError("VK_KHR_swapchain is required in ppEnabledExtensionNames!")
         return v
-
-
-class VkSwapchainCreateInfoKHRModel(BaseModel):
-    minImageCount: Optional[int] = Field(
-        default=4, description="Number of images in the swapchain."
-    )
-    imageFormat: Optional[str] = Field(
-        default="VK_FORMAT_R8G8B8_UNORM", description="Format of the swapchain images."
-    )
-    presentMode: Optional[str] = Field(
-        default="VK_PRESENT_MODE_MAILBOX_KHR",
-        description="Present mode of the swapchain.",
-    )
 
 
 class VkShaderModuleModel(BaseModel):
@@ -470,7 +425,7 @@ class VkForgeModel(BaseModel):
             FILE.UTIL
         ]]
     ] = Field(
-        default_factory=List[str], 
+        default=None,
         description="VkForge generates a list of files. You can mark specific files to only generate once. "
         "Once VkForge sees that these files already exists, it will not overwrite them. "
         "This is useful if you only want to use VkForge as a starter and then manually update the code "
@@ -489,15 +444,9 @@ class VkForgeModel(BaseModel):
             description="Debug messenger creation info.",
         )
     )
-    PhysicalDeviceVulkan13Features: Optional[VkPhysicalDeviceVulkan13FeaturesModel] = Field(
-        default_factory=VkPhysicalDeviceVulkan13FeaturesModel,
-        description="Physical device Vulkan 1.3 features.",
-    )
+    
     DeviceCreateInfo: Optional[VkDeviceCreateInfoModel] = Field(
         default_factory=VkDeviceCreateInfoModel, description="Device creation info."
-    )
-    SwapchainCreateInfoKHR: Optional[VkSwapchainCreateInfoKHRModel] = Field(
-        default_factory=VkSwapchainCreateInfoKHRModel, description="Swapchain creation info."
     )
 
     Pipeline: List[VkPipelineModel] = Field(..., description="List of graphics pipelines.")

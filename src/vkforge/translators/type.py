@@ -1,5 +1,5 @@
 from vkforge.context import VkForgeContext
-from vkforge.mappings import FT
+from vkforge.mappings import TYPE_NAME
 
 
 def CreateForgeType(ctx: VkForgeContext) -> str:
@@ -23,7 +23,7 @@ struct {name}
     VkCommandBuffer  cmdbuf_draw;
 }};
 """
-    output = content.format(name=FT.FORGE)
+    output = content.format(name=TYPE_NAME.FORGE)
 
     return output
 
@@ -38,7 +38,7 @@ struct {name}
     VkSurfaceFormatKHR       surface_fmt;
 }};
 """
-    output = content.format(name=FT.CACHE)
+    output = content.format(name=TYPE_NAME.CACHE)
 
     return output
 
@@ -54,7 +54,7 @@ struct {name}
     VkDeviceMemory memory;
 }};
 """
-    output = content.format(name=FT.BUFFERALLOC)
+    output = content.format(name=TYPE_NAME.BUFFERALLOC)
 
     return output
 
@@ -68,7 +68,7 @@ def CreateVoidEnum(ctx: VkForgeContext) -> str:
     Func(__VA_ARGS__, &Var##_count, Var##_buffer); \
 }} while(0)
 """
-    output = content.format(name=FT.ENUM)
+    output = content.format(name=TYPE_NAME.VOID_ENUM)
 
     return output
 
@@ -81,6 +81,6 @@ def CreateResultEnum(ctx: VkForgeContext) -> str:
     Func(__VA_ARGS__, &Var##_count, Var##_buffer); \
 }} while(0)
 """
-    output = content.format(name=FT.ENUM)
+    output = content.format(name=TYPE_NAME.VOID_ENUM)
 
     return output

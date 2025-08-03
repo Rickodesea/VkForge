@@ -4,8 +4,9 @@ from .schema import VkForgeModel
 
 @dataclass
 class VkForgeContext:
+    removeValidations: bool = False
     sourceDir: str = None
     buildDir: str = None
-    forgeConfig: VkForgeModel = None
-    shaderConfig: dict = None
+    forgeModel: VkForgeModel = None
+    shaderData: dict = None
     layout: dict = None

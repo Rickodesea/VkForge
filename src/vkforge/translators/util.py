@@ -1,5 +1,5 @@
 from vkforge.context import VkForgeContext
-from vkforge.mappings import F, FT
+from vkforge.mappings import *
 
 
 def CreateDebugMsgCallback(ctx: VkForgeContext) -> str:
@@ -41,31 +41,53 @@ VKAPI_ATTR VkBool32 VKAPI_CALL {name}
     return VK_FALSE;
 }}
 """
-    output = content.format(name=F.DEBUG_MSG_CALLBACK)
+    output = content.format(name=FUNC_NAME.DEBUG_CALLBACK)
 
     return output
 
 
 def CreateDebugMsgInfo(ctx: VkForgeContext) -> str:
+    if not ctx.forgeModel.DebugUtilsMessengerCreateInfoEXT.messageSeverity:
+        messageSeverity = "0"
+    else:
+        messageSeverity = ""
+        for ms in ctx.forgeModel.DebugUtilsMessengerCreateInfoEXT.messageSeverity:
+            ms = map_value(MSG_SEVERITY_MAP, ms)
+            if len(messageSeverity) > 0:
+                messageSeverity += "|" + "\n\t\t" + ms
+            else:
+                messageSeverity += ms
+    
+    if not ctx.forgeModel.DebugUtilsMessengerCreateInfoEXT.messageType:
+        messageType = "0"
+    else:
+        messageType = ""
+        for mt in ctx.forgeModel.DebugUtilsMessengerCreateInfoEXT.messageType:
+            mt = map_value(MSG_TYPE_MAP, mt)
+            if len(messageType) > 0:
+                messageType += " | " + "\n\t\t" + mt
+            else:
+                messageType += mt
+
     content = """\
 VkDebugUtilsMessengerCreateInfoEXT {name}()
 {{
     VkDebugUtilsMessengerCreateInfoEXT createInfo = {{0}};
     createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    createInfo.messageSeverity =
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-        //VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
-        //VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    createInfo.messageSeverity = 
+        {messageSeverity};
     createInfo.messageType =
-        VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+        {messageType};
     createInfo.pfnUserCallback = {callback};
     return createInfo;
 }}
 """
-    output = content.format(name=F.DEBUG_MSG_INFO, callback=F.DEBUG_MSG_CALLBACK)
+    output = content.format(
+        name=FUNC_NAME.DEBUG_INFO, 
+        messageSeverity=messageSeverity,
+        messageType=messageType,
+        callback=FUNC_NAME.DEBUG_CALLBACK
+    )
 
     return output
 
@@ -155,7 +177,7 @@ uint32_t {name}(VkPhysicalDeviceLimits limits)
     return score;
 }}
 """
-    output = content.format(name=F.SCORE_PHYSICAL_DEVICE)
+    output = content.format(name=FUNC_NAME.SCORE)
 
     return output
 
@@ -181,7 +203,7 @@ VkFence {name}(VkDevice device, VkAllocationCallbacks* allocator)
     return fence;
 }}
 """
-    output = content.format(F.FENCE)
+    output = content.format(name=FUNC_NAME.FENCE)
 
     return output
 
@@ -207,7 +229,7 @@ VkSemaphore {name}(VkDevice device, VkAllocationCallbacks* allocator)
     return semaphore;
 }}
 """
-    output = content.format(F.SEMAPHORE)
+    output = content.format(name=FUNC_NAME.SEMAPHORE)
 
     return output
 
@@ -262,7 +284,10 @@ void {name}
 
 """
     output = content.format(
-        name=F.CACHE, cacheType=FT.CACHE, enum=FT.ENUM, reqFormat="UNION"
+        name=FUNC_NAME.CACHE, 
+        cacheType=TYPE_NAME.CACHE, 
+        enum=FUNC_NAME.ENUM, 
+        reqFormat="UNION"
     )
 
     return output
@@ -270,7 +295,7 @@ void {name}
 
 def CreateCmdImageBarrier(ctx: VkForgeContext) -> str:
     content = """\
-void CmdImageBarrier
+void {name}
 (
     VkCommandBuffer cmdbuf,
 
@@ -308,14 +333,14 @@ void CmdImageBarrier
 
 
 """
-    output = content.format()
+    output = content.format(name=FUNC_NAME.IMAGE_BARRIER)
 
     return output
 
 
 def CreateCmdBufferBarrier(ctx: VkForgeContext) -> str:
     content = """\
-void CmdBufferBarrier
+void {name}
 (
     VkCommandBuffer cmdbuf,
 
@@ -350,21 +375,21 @@ void CmdBufferBarrier
 }}
 
 """
-    output = content.format()
+    output = content.format(name=FUNC_NAME.BUFFER_BARRIER)
 
     return output
 
 
 def CreateGetSurfaceFormat(ctx: VkForgeContext) -> str:
     content = """\
-VkSurfaceFormatKHR GetSurfaceFormat
+VkSurfaceFormatKHR {name}
 (
     VkPhysicalDevice physical_device,
     VkSurfaceKHR     surface,
     VkFormat         req_format
 )
 {{
-    VULKAN_ENUM(
+    {enum}(
         formats,
         VkSurfaceFormatKHR,
         vkGetPhysicalDeviceSurfaceFormatsKHR,
@@ -383,14 +408,17 @@ VkSurfaceFormatKHR GetSurfaceFormat
 }}
 
 """
-    output = content.format()
+    output = content.format(
+        name=FUNC_NAME.SURFACE_FORMAT,
+        enum=FUNC_NAME.ENUM
+    )
 
     return output
 
 
-def CreateGetSwapchainSize(ctx: VkForgeContext) -> str:
+def CreateGetSurfaceCapabilities(ctx: VkForgeContext) -> str:
     content = """\
-VkSurfaceCapabilitiesKHR GetSurfaceCapabilities
+VkSurfaceCapabilitiesKHR {name}
 (
     VkPhysicalDevice physical_device,
     VkSurfaceKHR     surface
@@ -409,21 +437,50 @@ VkSurfaceCapabilitiesKHR GetSurfaceCapabilities
 }}
 
 """
-    output = content.format()
+    output = content.format(name=FUNC_NAME.SURFACE_CAP)
 
     return output
 
+def CreateGetSwapchainSize(ctx:VkForgeContext) -> str:
+    content = """\
+uint32_t {name}
+(
+    VkPhysicalDevice physical_device,
+    VkSurfaceKHR     surface,
+    uint32_t         req_size
+)
+{{
+
+    VkSurfaceCapabilitiesKHR surface_cap = GetSurfaceCapabilities(physical_device, surface);
+
+    if ( surface_cap.maxImageCount == 0 )
+    {{
+        return req_size;
+    }}
+
+    if (req_size <= surface_cap.maxImageCount)
+    {{
+        return req_size;
+    }}
+
+    return surface_cap.minImageCount;
+}}
+
+"""
+    output = content.format(name=FUNC_NAME.SWAPCHAIN_SIZE)
+
+    return output
 
 def CreateGetPresentMode(ctx: VkForgeContext) -> str:
     content = """\
-VkPresentModeKHR GetPresentMode
+VkPresentModeKHR {name}
 (
     VkPhysicalDevice physical_device,
     VkSurfaceKHR     surface,
     VkPresentModeKHR req_mode
 )
 {{
-    VULKAN_ENUM(
+    {enum}(
         modes,
         VkPresentModeKHR,
         vkGetPhysicalDeviceSurfacePresentModesKHR,
@@ -441,14 +498,17 @@ VkPresentModeKHR GetPresentMode
 }}
 
 """
-    output = content.format()
+    output = content.format(
+        name=FUNC_NAME.PRESENT_MODE,
+        enum=FUNC_NAME.ENUM
+    )
 
     return output
 
 
 def CreateGetMemoryTypeIndex(ctx: VkForgeContext) -> str:
     content = """\
-uint32_t GetMemoryTypeIndex
+uint32_t {name}
 (
     VkPhysicalDevice      physical_device,
     uint32_t              typeFilter,
@@ -473,6 +533,23 @@ uint32_t GetMemoryTypeIndex
 }}
 
 """
-    output = content.format()
+    output = content.format(name=FUNC_NAME.MEMORY_TYPE)
 
     return output
+
+def GetUtilStrings(ctx: VkForgeContext):
+    return [
+        CreateScorePhysicalDevice(ctx),
+        CreateDebugMsgInfo(ctx),
+        CreateDebugMsgCallback(ctx),
+        CreateCmdBufferBarrier(ctx),
+        CreateCmdImageBarrier(ctx),
+        CreateFence(ctx),
+        CreateSemaphore(ctx),
+        CreateGetCache(ctx),
+        CreateGetMemoryTypeIndex(ctx),
+        CreateGetSwapchainSize(ctx),
+        CreateGetSurfaceFormat(ctx),
+        CreateGetSurfaceCapabilities(ctx),
+        CreateGetPresentMode(ctx),
+    ]
