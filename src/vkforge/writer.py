@@ -46,3 +46,4 @@ def Write_C_Definition_Module(ctx: VkForgeContext, filename, stringFunc):
 def Generate(ctx: VkForgeContext):
     Write_C_Definition_Module(ctx, FILE.CORE, GetCoreStrings)
     Write_C_Definition_Module(ctx, FILE.UTIL, GetUtilStrings)
+    Write_C_Definition_Module(ctx, FILE.PIPELINE_C, GetPipelineStrings)

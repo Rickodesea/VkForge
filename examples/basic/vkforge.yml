@@ -33,4 +33,11 @@ Pipeline:
     VertexInputBindingDescription:
       - stride: sizeof(long)
         first_location: 0
+  - name: different
+    ShaderModule:
+      - path: different.vert
+      - path: different.frag
+    VertexInputBindingDescription:
+      - stride: sizeof(long)
+        first_location: 0
 

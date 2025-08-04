@@ -6,7 +6,7 @@ from typing import Any
 
 
 def map_value(mapping: dict, key: str) -> Any:
-    if key.lower() in mapping:
+    if key in mapping:
         return mapping[key]
     return key
 
@@ -100,6 +100,94 @@ DYNAMIC_STATE_MAP = {
     "primitive_restart_enable": "VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE",
 }
 
+DESCRIPTOR_TYPE_MAP = {
+    # VK abbriations
+    "sampler": "VK_DESCRIPTOR_TYPE_SAMPLER",
+    "combined_image_sampler": "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+    "sampled_image": "VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE",
+    "storage_image": "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE",
+    "uniform_texel_buffer": "VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER",
+    "storage_texel_buffer": "VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER",
+    "uniform_buffer": "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+    "storage_buffer": "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER",
+    "uniform_buffer_dynamic": "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC",
+    "storage_buffer_dynamic": "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC",
+    "input_attachment": "VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT",
+    "inline_uniform_block": "VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK",
+    "acceleration_structure": "VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR",
+    "acceleration_structure_nv": "VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV",
+    "sample_weight_image": "VK_DESCRIPTOR_TYPE_SAMPLE_WEIGHT_IMAGE_QCOM",
+    "block_match_image": "VK_DESCRIPTOR_TYPE_BLOCK_MATCH_IMAGE_QCOM",
+    "tensor": "VK_DESCRIPTOR_TYPE_TENSOR_ARM",
+    "mutable": "VK_DESCRIPTOR_TYPE_MUTABLE_EXT",
+    "partitioned_acceleration_structure": "VK_DESCRIPTOR_TYPE_PARTITIONED_ACCELERATION_STRUCTURE_NV",
+    
+    # GLSL types
+    "sampler2D": "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+    "sampler1D": "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+    "sampler3D": "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+    "samplerCube": "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+    "sampler2DArray": "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+    "sampler2DShadow": "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+    "samplerCubeShadow": "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+    "sampler2DMS": "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER",
+    
+    "texture2D": "VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE",
+    "texture1D": "VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE",
+    "texture3D": "VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE",
+    "textureCube": "VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE",
+    "texture2DArray": "VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE",
+    
+    "image2D": "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE",
+    "image1D": "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE",
+    "image3D": "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE",
+    "imageCube": "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE",
+    "image2DArray": "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE",
+    
+    "subpassInput": "VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT",
+    "subpassInputMS": "VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT",
+    
+    # Buffer types
+    "ubo": "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+    "uniform_buffer": "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+    "ssbo": "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER",
+    "storage_buffer": "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER",
+    
+    # Special types
+    "atomic_uint": "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER",
+    "buffer": "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER",
+    
+    # Shader storage types
+    "accelerationStructure": "VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR",
+    
+    # GLSL legacy types
+    "gl_PerVertex": "VK_DESCRIPTOR_TYPE_MAX_ENUM",  # Built-in, not a descriptor type
+
+    # Reflection
+    "ubos": "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+    "ssbos": "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER",
+    "subpass_inputs": "VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT",
+}
+
+SHADER_STAGE_MAP = {
+    "vert": "VK_SHADER_STAGE_VERTEX_BIT",
+    "frag": "VK_SHADER_STAGE_FRAGMENT_BIT",
+    "comp": "VK_SHADER_STAGE_COMPUTE_BIT",
+    "geom": "VK_SHADER_STAGE_GEOMETRY_BIT",
+    "tesc": "VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT",
+    "tese": "VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT",
+    "mesh": "VK_SHADER_STAGE_MESH_BIT_EXT",
+    "task": "VK_SHADER_STAGE_TASK_BIT_EXT",
+    "rgen": "VK_SHADER_STAGE_RAYGEN_BIT_KHR",
+    "rint": "VK_SHADER_STAGE_INTERSECTION_BIT_KHR",
+    "rahit": "VK_SHADER_STAGE_ANY_HIT_BIT_KHR",
+    "rchit": "VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR",
+    "rmiss": "VK_SHADER_STAGE_MISS_BIT_KHR",
+    "rcall": "VK_SHADER_STAGE_CALLABLE_BIT_KHR",
+    "mesh_nv": "VK_SHADER_STAGE_MESH_BIT_NV",
+    "task_nv": "VK_SHADER_STAGE_TASK_BIT_NV"
+}
+
 ############################################
 # Keys
 ############################################
@@ -136,10 +224,14 @@ class FUNC_NAME(StringEnum):
 
 class TYPE_NAME(StringEnum):
     FORGE = "VkForge"
+    FORGE_LAYOUT = "VkForgeLayout"
     CACHE = "VkForgeCache"
     BUFFERALLOC = "VkForgeBufferAlloc"
     VOID_ENUM = "VKFORGE_VOID_ENUM"
     ENUM = "VKFORGE_ENUM"
+    MAX_PIPELINES = "VKFORGE_MAX_PIPELINES"
+    MAX_DESCRIPTORSET_LAYOUTS = "VKFORGE_MAX_DESCRIPTORSET_LAYOUTS"
+    MAX_PIPELINE_LAYOUTS = "VKFORGE_MAX_PIPELINE_LAYOUTS"
 
 
 class SHADER(StringEnum):
@@ -161,6 +253,8 @@ class LAYOUT(StringEnum):
     DSET_REF        = "descriptorset_layout_references"
     PIPELINE_LAYOUT = "pipeline_layouts"
     RAW_LAYOUT      = "raw_layouts"
+    LAYOUTS         = "layouts"
+    REFERENCES      = "references"
 
 class REFLECT(StringEnum):
     TEXTURE       = "textures"

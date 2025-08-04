@@ -233,8 +233,8 @@ def optimize_pipeline_layouts(data: dict) -> dict:
         layouts.append(current)
 
     return {
-        "layouts": layouts,
-        "references": references
+        LAYOUT.LAYOUTS:    layouts,
+        LAYOUT.REFERENCES: references
     }
 
 

@@ -1,5 +1,5 @@
 from vkforge.context import VkForgeContext
-from vkforge.mappings import TYPE_NAME
+from vkforge.mappings import *
 
 
 def CreateForgeType(ctx: VkForgeContext) -> str:
@@ -58,29 +58,11 @@ struct {name}
 
     return output
 
-
-def CreateVoidEnum(ctx: VkForgeContext) -> str:
+def CreateForgeLayout(ctx: VkForgeContext) -> str:
     content = """\
-#define {name}(Var, Type, Func, Sizelimit, ...) \
-    Type Var##_buffer[Sizelimit] = {{0}}; uint32_t Var##_count = 0; do {{ \
-    Func(__VA_ARGS__, &Var##_count, 0); \
-    Var##_count = (Var##_count < Sizelimit) ? Var##_count : Sizelimit; \
-    Func(__VA_ARGS__, &Var##_count, Var##_buffer); \
-}} while(0)
+typedef struct {name} {name};
 """
-    output = content.format(name=TYPE_NAME.VOID_ENUM)
+    output = content.format(name=TYPE_NAME.FORGE_LAYOUT)
 
     return output
 
-def CreateResultEnum(ctx: VkForgeContext) -> str:
-    content = """\
-#define {name}(Var, Type, Func, Sizelimit, ...) \
-    Type Var##_buffer[Sizelimit] = {{0}}; uint32_t Var##_count = 0; do {{ \
-    Func(__VA_ARGS__, &Var##_count, 0); \
-    Var##_count = (Var##_count < Sizelimit) ? Var##_count : Sizelimit; \
-    Func(__VA_ARGS__, &Var##_count, Var##_buffer); \
-}} while(0)
-"""
-    output = content.format(name=TYPE_NAME.VOID_ENUM)
-
-    return output
