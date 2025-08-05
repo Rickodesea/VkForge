@@ -14,7 +14,6 @@ def print_unsupported_warning(id: str, reflect: dict):
         if r in unsupported:
             print(f"WARNING: VkForge does not support {r} in shader {id}.")
 
-
 def raise_unrecognized_error(id: str, reflect: dict):
     recognized = [
         REFLECT.IMAGE, 
@@ -195,9 +194,10 @@ def optimize_pipeline_layouts(data: dict) -> dict:
     previous = []
 
     pipeline_index = 0
-    pipeline_names = list(reference_dict.keys())
+    pipeline_keys = reference_dict.keys()
+    pipeline_names = list(pipeline_keys)
 
-    while(pipeline_index < len(reference_dict.keys())):
+    while(pipeline_index < len(pipeline_keys)):
         pipeline_name = pipeline_names[pipeline_index]
         hash_list = reference_dict[pipeline_name]
 
@@ -252,6 +252,9 @@ def combine_pipeline_descriptorset_layouts(pipeline_dset_layouts_dict: Dict[str,
             if not pipeline_name in references:
                 references[pipeline_name] = set()
             references[pipeline_name].add(key)
+    for key in references: # optimizing logic depends on this being consitently ordered
+        references[key] = sorted(list(references[key]))
+
     pipeline_descriptorset_layouts =  {
         LAYOUT.DSET_LAYOUT: layouts,
         LAYOUT.DSET_REF: references

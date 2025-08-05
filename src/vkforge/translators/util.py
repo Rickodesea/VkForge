@@ -546,7 +546,7 @@ def GetUtilStrings(ctx: VkForgeContext):
         CreateCmdImageBarrier(ctx),
         CreateFence(ctx),
         CreateSemaphore(ctx),
-        CreateGetCache(ctx),
+        #CreateGetCache(ctx),
         CreateGetMemoryTypeIndex(ctx),
         CreateGetSwapchainSize(ctx),
         CreateGetSurfaceFormat(ctx),

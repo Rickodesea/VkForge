@@ -166,7 +166,7 @@ struct {name}
 }};
 """
     output = content.format(
-        name=TYPE_NAME.FORGE_LAYOUT,
+        name=TYPE_NAME.LAYOUT,
         max_pipelines=TYPE_NAME.MAX_PIPELINES,
         max_descriptorset_layouts=TYPE_NAME.MAX_DESCRIPTORSET_LAYOUTS,
         max_pipeline_layouts=TYPE_NAME.MAX_PIPELINE_LAYOUTS
