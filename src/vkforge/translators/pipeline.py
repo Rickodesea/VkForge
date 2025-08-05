@@ -212,6 +212,7 @@ def BuildShaderStage(
         stageInfo += "\t" * indent2 + "},\n"
 
     stageInfo += "\t" * indent + "};\n"
+    stageInfo += "\t" * indent + f"uint32_t stageInfoCount = {len(shaderIds)};\n"
     return stageInfo
 
 def BuildInputBinding(
@@ -244,6 +245,7 @@ def BuildInputBinding(
         binding += "\t" * indent2 + "},\n"
     
     binding += "\t" * indent + "};\n"
+    binding += "\t" * indent + f"uint32_t bindingDescCount = {len(pipelineModule.VertexInputBindingDescription)};\n"
 
     return binding
 
@@ -352,6 +354,7 @@ def BuildInputAttribute(
         attribute += "\t" * indent2 + "0\n"
 
     attribute += "\t" * indent + "};\n"
+    attribute += "\t" * indent + f"uint32_t attributeDescCount = {len(attribute_list)};\n"
     return attribute
 
 def BuildPipeline(ctx: VkForgeContext, pipelineModule:VkPipelineModel):
