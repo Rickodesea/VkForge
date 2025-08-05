@@ -10,6 +10,13 @@ def map_value(mapping: dict, key: str) -> Any:
         return mapping[key]
     return key
 
+def map_dict(mapping: dict, key: str, subkey: str) -> Any:
+    if key in mapping:
+        dict_value = mapping[key]
+        if subkey in dict_value:
+            return dict_value[subkey]
+    raise ValueError(f"No value found for {key}.{subkey} in map dict")
+
 
 ############################################
 # Maps
@@ -169,23 +176,52 @@ DESCRIPTOR_TYPE_MAP = {
     "subpass_inputs": "VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT",
 }
 
-SHADER_STAGE_MAP = {
-    "vert": "VK_SHADER_STAGE_VERTEX_BIT",
-    "frag": "VK_SHADER_STAGE_FRAGMENT_BIT",
-    "comp": "VK_SHADER_STAGE_COMPUTE_BIT",
-    "geom": "VK_SHADER_STAGE_GEOMETRY_BIT",
-    "tesc": "VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT",
-    "tese": "VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT",
-    "mesh": "VK_SHADER_STAGE_MESH_BIT_EXT",
-    "task": "VK_SHADER_STAGE_TASK_BIT_EXT",
-    "rgen": "VK_SHADER_STAGE_RAYGEN_BIT_KHR",
-    "rint": "VK_SHADER_STAGE_INTERSECTION_BIT_KHR",
-    "rahit": "VK_SHADER_STAGE_ANY_HIT_BIT_KHR",
-    "rchit": "VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR",
-    "rmiss": "VK_SHADER_STAGE_MISS_BIT_KHR",
-    "rcall": "VK_SHADER_STAGE_CALLABLE_BIT_KHR",
-    "mesh_nv": "VK_SHADER_STAGE_MESH_BIT_NV",
-    "task_nv": "VK_SHADER_STAGE_TASK_BIT_NV"
+GLSL_TYPE_MAP = {
+    # Float types
+    "float": {"size": "sizeof(float) * 1", "format": "VK_FORMAT_R32_SFLOAT"},
+    "vec2": {"size": "sizeof(float) * 2", "format": "VK_FORMAT_R32G32_SFLOAT"},
+    "vec3": {"size": "sizeof(float) * 3", "format": "VK_FORMAT_R32G32B32_SFLOAT"},
+    "vec4": {"size": "sizeof(float) * 4", "format": "VK_FORMAT_R32G32B32A32_SFLOAT"},
+    
+    # Double types
+    "double": {"size": "sizeof(double) * 1", "format": "VK_FORMAT_R64_SFLOAT"},
+    "dvec2": {"size": "sizeof(double) * 2", "format": "VK_FORMAT_R64G64_SFLOAT"},
+    "dvec3": {"size": "sizeof(double) * 3", "format": "VK_FORMAT_R64G64B64_SFLOAT"},
+    "dvec4": {"size": "sizeof(double) * 4", "format": "VK_FORMAT_R64G64B64A64_SFLOAT"},
+    
+    # Integer types
+    "int": {"size": "sizeof(int32_t) * 1", "format": "VK_FORMAT_R32_SINT"},
+    "ivec2": {"size": "sizeof(int32_t) * 2", "format": "VK_FORMAT_R32G32_SINT"},
+    "ivec3": {"size": "sizeof(int32_t) * 3", "format": "VK_FORMAT_R32G32B32_SINT"},
+    "ivec4": {"size": "sizeof(int32_t) * 4", "format": "VK_FORMAT_R32G32B32A32_SINT"},
+    
+    # Unsigned integer types
+    "uint": {"size": "sizeof(uint32_t) * 1", "format": "VK_FORMAT_R32_UINT"},
+    "uvec2": {"size": "sizeof(uint32_t) * 2", "format": "VK_FORMAT_R32G32_UINT"},
+    "uvec3": {"size": "sizeof(uint32_t) * 3", "format": "VK_FORMAT_R32G32B32_UINT"},
+    "uvec4": {"size": "sizeof(uint32_t) * 4", "format": "VK_FORMAT_R32G32B32A32_UINT"},
+    
+    # Matrix types (column-major, each column consumes a location)
+    "mat2": {"size": "sizeof(float) * 4", "format": "VK_FORMAT_R32G32_SFLOAT", "columns": 2},
+    "mat3": {"size": "sizeof(float) * 9", "format": "VK_FORMAT_R32G32B32_SFLOAT", "columns": 3},
+    "mat4": {"size": "sizeof(float) * 16", "format": "VK_FORMAT_R32G32B32A32_SFLOAT", "columns": 4},
+    "mat2x3": {"size": "sizeof(float) * 6", "format": "VK_FORMAT_R32G32B32_SFLOAT", "columns": 2},
+    "mat2x4": {"size": "sizeof(float) * 8", "format": "VK_FORMAT_R32G32B32A32_SFLOAT", "columns": 2},
+    "mat3x2": {"size": "sizeof(float) * 6", "format": "VK_FORMAT_R32G32_SFLOAT", "columns": 3},
+    "mat3x4": {"size": "sizeof(float) * 12", "format": "VK_FORMAT_R32G32B32A32_SFLOAT", "columns": 3},
+    "mat4x2": {"size": "sizeof(float) * 8", "format": "VK_FORMAT_R32G32_SFLOAT", "columns": 4},
+    "mat4x3": {"size": "sizeof(float) * 12", "format": "VK_FORMAT_R32G32B32_SFLOAT", "columns": 4},
+    
+    # Double matrix types
+    "dmat2": {"size": "sizeof(double) * 4", "format": "VK_FORMAT_R64G64_SFLOAT", "columns": 2},
+    "dmat3": {"size": "sizeof(double) * 9", "format": "VK_FORMAT_R64G64B64_SFLOAT", "columns": 3},
+    "dmat4": {"size": "sizeof(double) * 16", "format": "VK_FORMAT_R64G64B64A64_SFLOAT", "columns": 4},
+    "dmat2x3": {"size": "sizeof(double) * 6", "format": "VK_FORMAT_R64G64B64_SFLOAT", "columns": 2},
+    "dmat2x4": {"size": "sizeof(double) * 8", "format": "VK_FORMAT_R64G64B64A64_SFLOAT", "columns": 2},
+    "dmat3x2": {"size": "sizeof(double) * 6", "format": "VK_FORMAT_R64G64_SFLOAT", "columns": 3},
+    "dmat3x4": {"size": "sizeof(double) * 12", "format": "VK_FORMAT_R64G64B64A64_SFLOAT", "columns": 3},
+    "dmat4x2": {"size": "sizeof(double) * 8", "format": "VK_FORMAT_R64G64_SFLOAT", "columns": 4},
+    "dmat4x3": {"size": "sizeof(double) * 12", "format": "VK_FORMAT_R64G64B64_SFLOAT", "columns": 4},
 }
 
 ############################################
@@ -220,6 +256,7 @@ class FUNC_NAME(StringEnum):
     ENUM = "VKFORGE_ENUM"
     VOID_ENUM = "VKFORGE_VOID_ENUM"
     INSTANCE = "VkForge_CreateInstance"
+    SHADER = "VkForge_CreateShaderModule"
 
 
 class TYPE_NAME(StringEnum):
@@ -267,6 +304,13 @@ class REFLECT(StringEnum):
     OUTPUT        = "outputs"
     ENTRYPOINT    = "entryPoints"
     TYPE          = "types"
+
+class ATTR(StringEnum):
+    LOCATION = "location"
+    BINDING  = "binding"
+    FORMAT   = "format"
+    OFFSET   = "offset"
+    SIZE     = "size"
 
 class MEMBER(StringEnum):
     TYPE = "type"

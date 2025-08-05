@@ -1,5 +1,6 @@
 from vkforge.context import VkForgeContext
 from vkforge.mappings import *
+from vkforge.schema import VkPipelineModel, VkVertexInputBindingDescriptionModel
 
 def BuildBind(bindTuple:tuple, indent=0):
     bind = "\n"
@@ -98,7 +99,7 @@ def BuiledReferencedLayoutDesign(layoutsList:list, references:dict, indent=0):
     layouts += "\t" * indent + "}" # close bracket
     return layouts
 
-def CreateForgeLayoutDesign(ctx: VkForgeContext) -> str:
+def CreateForgeReferencedLayoutDesign(ctx: VkForgeContext) -> str:
     content = """\
 typedef struct VkForgeLayoutBindDesign VkForgeLayoutBindDesign;
 struct VkForgeLayoutBindDesign
@@ -174,7 +175,206 @@ struct {name}
 
     return output
 
+def BuildShaderStage(
+        ctx: VkForgeContext, 
+        pipelineModule:VkPipelineModel, 
+        pipelineName:str, 
+        shaderIds:list,
+        indent = 1
+) -> str:
+    stageInfo = ""
+    indent2 = indent + 1
+    indent3 = indent2 + 1
+
+    for shaderId in shaderIds:
+        shader = ctx.shaderData[SHADER.LIST][shaderId]
+        stageInfo += "\t" * indent + f"VkShaderModule shader_{shader[SHADER.MODE]} = "
+        stageInfo += f"{FUNC_NAME.SHADER}(device, \"{shader[SHADER.BINPATH].as_posix()}\");\n"
+        stageInfo += "\t" * indent + f"if( VK_NULL_HANDLE == shader_{shader[SHADER.MODE]} )\n"
+        stageInfo += "\t" * indent + "{\n"
+        stageInfo += "\t" * indent2 + f'SDL_LogError(0, "Failed to create {shader[SHADER.MODE]} shader for {pipelineName} pipeline\\n");\n'
+        stageInfo += "\t" * indent2 + "exit(1);\n"
+        stageInfo += "\t" * indent + "}\n\n"
+
+    stageInfo += "\t" * indent + "VkPipelineShaderStageCreateInfo stageInfo[] =\n"
+    stageInfo += "\t" * indent + "{\n"
+
+    for shaderId in shaderIds:
+        stageInfo += "\t" * indent2 + "{\n"
+
+        shader = ctx.shaderData[SHADER.LIST][shaderId]
+
+        stageInfo += "\t" * indent3 + ".sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,\n"
+        stageInfo += "\t" * indent3 + ".stage  = " + f"{map_value(SHADER_STAGE_MAP, shader[SHADER.MODE])},\n"
+        stageInfo += "\t" * indent3 + ".module = " + f"shader_{shader[SHADER.MODE]},\n"
+        stageInfo += "\t" * indent3 + ".pName  = " + f"\"{shader[SHADER.ENTRYNAME]}\",\n"
+
+        stageInfo += "\t" * indent2 + "},\n"
+
+    stageInfo += "\t" * indent + "};\n"
+    return stageInfo
+
+def BuildInputBinding(
+        ctx: VkForgeContext, 
+        pipelineModule:VkPipelineModel, 
+        pipelineName:str, 
+        shaderIds:list,
+        indent = 1
+) -> str:
+    binding = "\n"
+    indent2 = indent + 1
+    indent3 = indent2 + 1
+
+    binding += "\t" * indent + "VkVertexInputBindingDescription bindingDesc[] =\n"
+    binding += "\t" * indent + "{\n"
+
+    for i, inputBinding in enumerate(pipelineModule.VertexInputBindingDescription):
+        rate = inputBinding.inputRate
+        if inputBinding.stride_kind == 'TYPE':
+            stride = f"sizeof({inputBinding.stride})"
+        else:
+            stride = inputBinding.stride
+        
+        binding += "\t" * indent2 + "{\n"
+
+        binding += "\t" * indent3 + f".binding = {i},\n"
+        binding += "\t" * indent3 + f".stride = {stride},\n"
+        binding += "\t" * indent3 + f".binding = {map_value(INPUT_RATE_MAP, rate)},\n"
+
+        binding += "\t" * indent2 + "},\n"
+    
+    binding += "\t" * indent + "};\n"
+
+    return binding
+
+def GetInputAttributeList(
+        ctx: VkForgeContext, 
+        pipelineModule:VkPipelineModel, 
+        pipelineName:str, 
+        shaderIds:list,
+) -> list:
+    attribute_list = []
+    binding_list = []
+    
+    for i, inputBinding in enumerate(pipelineModule.VertexInputBindingDescription):
+        binding_list.append((i, inputBinding.first_location, inputBinding.inputRate, inputBinding.stride_kind))
+    
+    # Handle case where first_location 0 is not in the list
+    if not any(b[1] == 0 for b in binding_list):
+        binding_list.append((len(binding_list), 0, 'VK_VERTEX_INPUT_RATE_VERTEX', 'INT'))
+    
+    # Sort binding_list by binding first, first_location second
+    binding_list.sort(key=lambda x: (x[0], x[1]))
+
+    for shaderId in shaderIds:
+        shader = ctx.shaderData[SHADER.LIST][shaderId]
+        
+        # input binding / attribute applies to only vertex shaders
+        mode = shader[SHADER.MODE]
+        if not mode == "vert":
+            continue
+        
+        reflect = shader[SHADER.REFLECT]
+        input_list = reflect.get(REFLECT.INPUT, {})
+        for input_item in input_list:
+            location = input_item["location"]
+            type1 = input_item["type"]
+            attribute = {
+                ATTR.LOCATION: location,
+                ATTR.FORMAT: map_dict(GLSL_TYPE_MAP, type1, "format"),
+                ATTR.SIZE: map_dict(GLSL_TYPE_MAP, type1, "size")
+            }
+            attribute_list.append(attribute)
+    
+    def GetBindingInfo(binding_list, attribute):
+        location = attribute[ATTR.LOCATION]
+        # Find the binding with the largest first_location <= location
+        candidates = [b for b in binding_list if b[1] <= location]
+        if not candidates:
+            return binding_list[0]  # default to first binding
+        # Return the binding with largest first_location <= location
+        return max(candidates, key=lambda x: x[1])
+    
+    for i in range(len(attribute_list)):
+        bindingInfo = GetBindingInfo(binding_list, attribute_list[i])
+        binding, _, _, _ = bindingInfo
+        attribute_list[i][ATTR.BINDING] = binding
+
+    # Sort attribute list by binding first and location second
+    attribute_list.sort(key=lambda x: (x[ATTR.BINDING], x[ATTR.LOCATION]))
+
+    def GetAttributeIndexList(attribute_list, binding):
+        return [i for i, attr in enumerate(attribute_list) if attr[ATTR.BINDING] == binding]
+    
+    for binding, _, _, kind in binding_list:
+        attribute_index_list = GetAttributeIndexList(attribute_list, binding)
+        if kind == 'TYPE' and pipelineModule.VertexInputBindingDescription[binding].stride_members:
+            members = pipelineModule.VertexInputBindingDescription[binding].stride_members
+            type1 = pipelineModule.VertexInputBindingDescription[binding].stride
+            for i, index in enumerate(attribute_index_list):
+                if i < len(members):
+                    attribute_list[index][ATTR.OFFSET] = f"offsetof({type1}, {members[i]})"
+        else:
+            sizeoffset = "0"
+            for index in attribute_index_list:
+                attribute_list[index][ATTR.OFFSET] = sizeoffset
+                sizeoffset += " + " + attribute_list[index][ATTR.SIZE]
+    
+    return attribute_list
+                
+def BuildInputAttribute(
+        ctx: VkForgeContext, 
+        pipelineModule:VkPipelineModel, 
+        pipelineName:str, 
+        shaderIds:list,
+        indent = 1
+) -> str:
+    attribute = "\n"
+    indent2 = indent + 1
+    indent3 = indent2 + 1
+
+    attribute += "\t" * indent + "VkVertexInputAttributeDescription attributeDesc[] =\n"
+    attribute += "\t" * indent + "{\n"
+
+    attribute_list = GetInputAttributeList(ctx, pipelineModule, pipelineName, shaderIds)
+
+    if attribute_list:
+        for attribute_item in attribute_list:
+            attribute += "\t" * indent2 + "{\n"
+
+            attribute += "\t" * indent3 + f".binding = {attribute_item[ATTR.BINDING]},\n"
+            attribute += "\t" * indent3 + f".location = {attribute_item[ATTR.LOCATION]},\n"
+            attribute += "\t" * indent3 + f".format = {attribute_item[ATTR.FORMAT]},\n"
+            attribute += "\t" * indent3 + f".offset = {attribute_item[ATTR.OFFSET]},\n"
+
+            attribute += "\t" * indent2 + "},\n"
+    else:
+        attribute += "\t" * indent2 + "0\n"
+
+    attribute += "\t" * indent + "};\n"
+    return attribute
+
+def BuildPipeline(ctx: VkForgeContext, pipelineModule:VkPipelineModel):
+    pipelineName = pipelineModule.name
+    shaderIds = ctx.shaderData[SHADER.COMBO][pipelineName]
+
+    pipeline = ""
+    pipeline += BuildShaderStage(ctx, pipelineModule, pipelineName, shaderIds)
+    pipeline += BuildInputBinding(ctx, pipelineModule, pipelineName, shaderIds)
+    pipeline += BuildInputAttribute(ctx, pipelineModule, pipelineName, shaderIds)
+
+    return pipeline
+
+def CreatePipelines(ctx: VkForgeContext):
+    pipelines = ""
+    for pipelineModule in ctx.forgeModel.Pipeline:
+        pipelines += BuildPipeline(ctx, pipelineModule)
+    
+    return pipelines
+
 def GetPipelineStrings(ctx: VkForgeContext):
     return [
-        CreateForgeLayoutDesign(ctx)
+        CreateForgeReferencedLayoutDesign(ctx),
+        CreateForgeLayout(ctx),
+        CreatePipelines(ctx)
     ]
