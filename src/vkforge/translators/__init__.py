@@ -2,10 +2,14 @@ from .core import GetCoreStrings
 from .util import GetUtilStrings
 from .pipeline import GetPipelineStrings
 from .type import GetTypeStrings
+from .layout import GetLayoutStrings
+from .func import GetFuncStrings
 
 __all__ = [
     "GetCoreStrings",
     "GetUtilStrings",
     "GetPipelineStrings",
-    "GetTypeStrings"
+    "GetTypeStrings",
+    "GetLayoutStrings",
+    "GetFuncStrings"
 ]

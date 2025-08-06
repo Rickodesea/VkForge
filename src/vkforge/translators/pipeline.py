@@ -1,179 +1,6 @@
 from vkforge.context import VkForgeContext
 from vkforge.mappings import *
-from vkforge.schema import VkPipelineModel, VkVertexInputBindingDescriptionModel
-
-def BuildBind(bindTuple:tuple, indent=0):
-    bind = "\n"
-    bind += "\t" * indent + "{\n" # open bracket
-    child_indent = indent + 1
-    if bindTuple:
-        type1, count, stages = bindTuple
-        stages = list(stages)
-
-        type1 = map_value(DESCRIPTOR_TYPE_MAP, type1)
-        for i in range(len(stages)):
-            stages[i] = map_value(SHADER_STAGE_MAP, stages[i])
-
-        bind += "\t" * child_indent + f"{type1},\n"
-        bind += "\t" * child_indent + f"{count},\n"
-
-        stage_str = "{ "
-        for i, stage in enumerate(stages):
-            stage_str += f"{stage}"
-            if i < len(stages) - 1:
-                stage_str += " | "
-        stage_str += " }"
-
-        bind += "\t" * child_indent + f"{stage_str},\n"
-    else:
-        bind += "\t" * child_indent + "0, 0, {0}\n"
-    bind += "\t" * indent + "}" # close bracket
-    return bind
-
-
-def BuildSet1(setList:list, indent=0):
-    set1 = "\n"
-    set1 += "\t" * indent + "{\n" # open bracket
-    child_indent = indent + 1
-    if setList:
-        set1 += "\t" * child_indent + "/** Bindings **/\n"
-        set1 += "\t" * child_indent + f"{len(setList)},\n"
-        set1 += "\t" * child_indent + "{" # child open
-        child_indent2 = child_indent + 1
-        for bind in setList:
-            set1 += BuildBind(bind, child_indent2) + ",\n"
-        set1 += "\t" * child_indent + "}\n" # child close
-    else:
-        set1 += "\n"
-        set1 += "\t" * child_indent + "{0}\n"
-    set1 += "\t" * indent + "}" # close bracket
-    return set1
-
-def BuildPipelineLayout(layoutList:list, indent=0):
-    layout = "\n"
-    layout += "\t" * indent + "{\n" # open bracket
-    child_indent = indent + 1
-    if layoutList:
-        layout += "\t" * child_indent + "/** DescriptorSet Layouts **/\n"
-        layout += "\t" * child_indent + f"{len(layoutList)},\n"
-        layout += "\t" * child_indent + "{" # child open
-        child_indent2 = child_indent + 1
-        for set1 in layoutList:
-            layout += BuildSet1(set1, child_indent2) + ",\n"
-        layout += "\t" * child_indent + "}\n" # child close
-    else:
-        layout += "\n"
-        layout += "\t" * child_indent + "{0}\n"
-    layout += "\t" * indent + "}" # close bracket
-    return layout
-
-def BuildReference(key:str, val:int, indent=0):
-    reference = "\n"
-    reference += "\t" * indent + "{ " # open bracket
-    reference += f'{val}, "{key}"'
-    reference += " }" # close bracket
-    return reference
-
-def BuiledReferencedLayoutDesign(layoutsList:list, references:dict, indent=0):
-    layouts = "\n"
-    layouts += "\t" * indent + "{\n" # open bracket
-    child_indent = indent + 1
-    child_indent2 = child_indent + 1
-    if layoutsList:
-        layouts += "\t" * child_indent + "/** Pipeline Layouts **/\n"
-        layouts += "\t" * child_indent + f"{len(layoutsList)},\n"
-        layouts += "\t" * child_indent + "{" # child open
-        for pipeline_layout in layoutsList:
-            layouts += BuildPipelineLayout(pipeline_layout, child_indent2) + ",\n"
-        layouts += "\t" * child_indent + "},\n" # child close
-
-        layouts += "\t" * child_indent + "/** References **/\n"
-        layouts += "\t" * child_indent + f"{len(references)},\n"
-        layouts += "\t" * child_indent + "{" # child open
-        for key, val in references.items():
-            layouts += BuildReference(key, val, child_indent2) + ","
-        layouts += "\n" + "\t" * child_indent + "}\n" # child close
-    else:
-        layouts += "\n"
-        layouts += "\t" * child_indent + "0, {0}, 0, {0}\n"
-    layouts += "\t" * indent + "}" # close bracket
-    return layouts
-
-def CreateForgeReferencedLayoutDesign(ctx: VkForgeContext) -> str:
-    content = """\
-typedef struct VkForgeLayoutBindDesign VkForgeLayoutBindDesign;
-struct VkForgeLayoutBindDesign
-{{
-    uint32_t  type;
-    uint32_t  count;
-    uint32_t  mode_count;
-    uint32_t* mode_buffer;
-}};
-
-typedef struct VkForgeLayoutDescriptorSetLayoutDesign VkForgeLayoutDescriptorSetLayoutDesign;
-struct VkForgeLayoutDescriptorSetLayoutDesign
-{{
-    uint32_t bind_design_count;
-    VkForgeLayoutBindDesign* bind_design_buffer;
-}};
-    
-typedef struct VkForgeLayoutPipelineLayoutDesign VkForgeLayoutPipelineLayoutDesign;
-struct VkForgeLayoutPipelineLayoutDesign
-{{
-    uint32_t descriptorset_layout_design_count;
-    VkForgeLayoutDescriptorSetLayoutDesign* descriptorset_layout_design_buffer;
-}};
-
-typedef struct VkForgeLayoutReferenceDesign VkForgeLayoutReferenceDesign;
-struct VkForgeLayoutReferenceDesign
-{{
-    uint32_t    pipeline_layout_design_index; 
-    const char* pipline_name
-}};
-
-typedef struct VkForgeReferencedLayoutDesign VkForgeReferencedLayoutDesign;
-struct VkForgeReferencedLayoutDesign
-{{
-    uint32_t pipeline_layout_design_count;
-    VkForgeLayoutPipelineLayoutDesign* pipeline_layout_design_buffer;
-    uint32_t reference_count;
-    VkForgeLayoutReferenceDesign* reference_buffer;
-}};
-
-static VkForgeReferencedLayoutDesign VKFORGE_REFERENCED_LAYOUT_DESIGN = {forge_layout_design_content};
-"""
-    if ctx.layout[LAYOUT.PIPELINE_LAYOUT][LAYOUT.LAYOUTS]:
-        layouts = ctx.layout[LAYOUT.PIPELINE_LAYOUT][LAYOUT.LAYOUTS]
-        references = ctx.layout[LAYOUT.PIPELINE_LAYOUT][LAYOUT.REFERENCES]
-        forge_layout_design_content = BuiledReferencedLayoutDesign(layouts, references)
-    else:
-        forge_layout_design_content = "{0}"
-    output = content.format(forge_layout_design_content=forge_layout_design_content)
-
-    return output
-
-def CreateForgeLayout(ctx: VkForgeContext) -> str:
-    content = """\
-struct {name}
-{{
-    uint8_t               pipeline_count;
-    VkPipeline            pipeline_buffer[{max_pipelines}];
-    uint8_t               descriptorset_count;
-    VkDescriptorSet       descriptorset_buffer[{max_descriptorset_layouts}];
-    uint8_t               pipeline_layout_count;
-    VkPipelineLayout      pipeline_layout_buffer[{max_pipeline_layouts}];
-    uint8_t               descriptorset_layout_count;
-    VkDescriptorSetLayout descriptorset_layout_buffer[{max_descriptorset_layouts}];
-}};
-"""
-    output = content.format(
-        name=TYPE_NAME.LAYOUT,
-        max_pipelines=TYPE_NAME.MAX_PIPELINES,
-        max_descriptorset_layouts=TYPE_NAME.MAX_DESCRIPTORSET_LAYOUTS,
-        max_pipeline_layouts=TYPE_NAME.MAX_PIPELINE_LAYOUTS
-    )
-
-    return output
+from vkforge.schema import VkPipelineModel
 
 def BuildShaderStage(
         ctx: VkForgeContext, 
@@ -357,16 +184,276 @@ def BuildInputAttribute(
     attribute += "\t" * indent + f"uint32_t attributeDescCount = {len(attribute_list)};\n"
     return attribute
 
-def BuildPipeline(ctx: VkForgeContext, pipelineModule:VkPipelineModel):
+def BuildInputState(
+        ctx: VkForgeContext, 
+        pipelineModule:VkPipelineModel, 
+        pipelineName:str, 
+        shaderIds:list,
+        indent = 1
+) -> str:
+    state = "\n"
+    indent2 = indent + 1
+    indent3 = indent2 + 1
+
+    state += "\t" * indent + "VkPipelineVertexInputStateCreateInfo inputStateInfo = {0};\n"
+    state += "\t" * indent + "inputStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;\n"
+    state += "\t" * indent + "inputStateInfo.vertexBindingDescriptionCount = bindingDescCount;\n"
+    state += "\t" * indent + "inputStateInfo.pVertexBindingDescriptions = bindingDescCount ? bindingDesc : 0;\n"
+    state += "\t" * indent + "inputStateInfo.vertexAttributeDescriptionCount = attributeDescCount;\n"
+    state += "\t" * indent + "inputStateInfo.pVertexAttributeDescriptions = attributeDescCount ? attributeDesc : 0;\n"
+
+    return state
+
+def BuildInputAssembly(
+        ctx: VkForgeContext, 
+        pipelineModule:VkPipelineModel, 
+        pipelineName:str, 
+        shaderIds:list,
+        indent = 1
+) -> str:
+    assembly = "\n"
+    indent2 = indent + 1
+    indent3 = indent2 + 1
+
+    topology = pipelineModule.InputAssemblyStateCreateInfo.topology
+
+    assembly += "\t" * indent + "VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {0};\n"
+    assembly += "\t" * indent + "inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;\n"
+    assembly += "\t" * indent + f"inputAssemblyInfo.topology = {topology};\n"
+
+    return assembly
+
+def BuildDynamicState(
+        ctx: VkForgeContext, 
+        pipelineModule:VkPipelineModel, 
+        pipelineName:str, 
+        shaderIds:list,
+        indent = 1
+) -> str:
+    states = "\n"
+    info = "\n"
+    indent2 = indent + 1
+
+    states += "\t" * indent + "VkDynamicState dynamicStates[] =\n"
+    states += "\t" * indent + "{\n"
+    for dynamicState in pipelineModule.DynamicState:
+        states += "\t" * indent2 + f"{map_value(DYNAMIC_STATE_MAP, dynamicState)},\n"
+    states += "\t" * indent + "};\n"
+
+    info = states + info
+    info += "\t" * indent + "VkPipelineDynamicStateCreateInfo dynamicInfo = {0};\n"
+    info += "\t" * indent + "dynamicInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;\n"
+    info += "\t" * indent + "dynamicInfo.dynamicStateCount = sizeof(dynamicStates) / sizeof(VkDynamicState);\n"
+    info += "\t" * indent + "dynamicInfo.pDynamicStates = dynamicStates;\n"
+
+    return info
+
+def BuildViewportState(
+        ctx: VkForgeContext, 
+        pipelineModule: VkPipelineModel, 
+        pipelineName: str, 
+        shaderIds: list,
+        indent: int = 1
+) -> str:
+    state = "\n"
+    indent2 = indent + 1
+    
+    state += "\t" * indent + "VkPipelineViewportStateCreateInfo viewportState = {0};\n"
+    state += "\t" * indent + "viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;\n"
+    state += "\t" * indent + "viewportState.viewportCount = 1;\n"
+    state += "\t" * indent + "viewportState.scissorCount = 1;\n"
+    
+    return state
+
+def BuildMultisampleState(
+        ctx: VkForgeContext, 
+        pipelineModule: VkPipelineModel, 
+        pipelineName: str, 
+        shaderIds: list,
+        indent: int = 1
+) -> str:
+    state = "\n"
+    indent2 = indent + 1
+    
+    state += "\t" * indent + "VkPipelineMultisampleStateCreateInfo multisampleState = {0};\n"
+    state += "\t" * indent + "multisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;\n"
+    state += "\t" * indent + "multisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;\n"
+    
+    return state
+
+def BuildRasterizationState(
+        ctx: VkForgeContext, 
+        pipelineModule: VkPipelineModel, 
+        pipelineName: str, 
+        shaderIds: list,
+        indent: int = 1
+) -> str:
+    state = "\n"
+    indent2 = indent + 1
+    
+    raster = pipelineModule.RasterizationStateCreateInfo
+    
+    state += "\t" * indent + "VkPipelineRasterizationStateCreateInfo rasterizerInfo = {0};\n"
+    state += "\t" * indent + "rasterizerInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;\n"
+    state += "\t" * indent + f"rasterizerInfo.depthClampEnable = {'VK_TRUE' if raster.depthClampEnable else 'VK_FALSE'};\n"
+    state += "\t" * indent + f"rasterizerInfo.rasterizerDiscardEnable = {'VK_TRUE' if raster.rasterizerDiscardEnable else 'VK_FALSE'};\n"
+    state += "\t" * indent + f"rasterizerInfo.polygonMode = {raster.polygonMode};\n"
+    state += "\t" * indent + f"rasterizerInfo.cullMode = {raster.cullMode};\n"
+    state += "\t" * indent + f"rasterizerInfo.frontFace = {raster.frontFace};\n"
+    state += "\t" * indent + f"rasterizerInfo.depthBiasEnable = {'VK_TRUE' if raster.depthBiasEnable else 'VK_FALSE'};\n"
+    state += "\t" * indent + f"rasterizerInfo.depthBiasConstantFactor = {raster.depthBiasConstantFactor};\n"
+    state += "\t" * indent + f"rasterizerInfo.depthBiasClamp = {raster.depthBiasClamp};\n"
+    state += "\t" * indent + f"rasterizerInfo.depthBiasSlopeFactor = {raster.depthBiasSlopeFactor};\n"
+    state += "\t" * indent + f"rasterizerInfo.lineWidth = {raster.lineWidth};\n"
+    
+    return state
+
+def BuildColorBlendAttachment(
+        ctx: VkForgeContext, 
+        pipelineModule: VkPipelineModel, 
+        pipelineName: str, 
+        shaderIds: list,
+        indent: int = 1
+) -> str:
+    state = "\n"
+    indent2 = indent + 1
+    
+    blend = pipelineModule.ColorBlendAttachmentState
+    
+    state += "\t" * indent + "VkPipelineColorBlendAttachmentState colorBlendAttachment = {0};\n"
+    state += "\t" * indent + f"colorBlendAttachment.blendEnable = {blend.blendEnable};\n"
+    state += "\t" * indent + f"colorBlendAttachment.srcColorBlendFactor = {blend.srcColorBlendFactor};\n"
+    state += "\t" * indent + f"colorBlendAttachment.dstColorBlendFactor = {blend.dstColorBlendFactor};\n"
+    state += "\t" * indent + f"colorBlendAttachment.colorBlendOp = {blend.colorBlendOp};\n"
+    state += "\t" * indent + f"colorBlendAttachment.colorWriteMask = {blend.colorWriteMask};\n"
+    
+    return state
+
+def BuildColorBlendState(
+        ctx: VkForgeContext, 
+        pipelineModule: VkPipelineModel, 
+        pipelineName: str, 
+        shaderIds: list,
+        indent: int = 1
+) -> str:
+    state = "\n"
+    indent2 = indent + 1
+    
+    blend = pipelineModule.ColorBlendStateCreateInfo
+    
+    state += "\t" * indent + "VkPipelineColorBlendStateCreateInfo colorBlending = {0};\n"
+    state += "\t" * indent + "colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;\n"
+    state += "\t" * indent + f"colorBlending.logicOpEnable = {blend.logicOpEnable};\n"
+    state += "\t" * indent + "colorBlending.attachmentCount = 1;\n"
+    state += "\t" * indent + "colorBlending.pAttachments = &colorBlendAttachment;\n"
+    
+    return state
+
+def BuildDepthStencilState(
+        ctx: VkForgeContext, 
+        pipelineModule: VkPipelineModel, 
+        pipelineName: str, 
+        shaderIds: list,
+        indent: int = 1
+) -> str:
+    state = "\n"
+    indent2 = indent + 1
+    
+    depth = pipelineModule.DepthStencilStateCreateInfo
+    
+    state += "\t" * indent + "VkPipelineDepthStencilStateCreateInfo depthStencil = {0};\n"
+    state += "\t" * indent + "depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;\n"
+    state += "\t" * indent + f"depthStencil.depthTestEnable = {depth.depthTestEnable};\n"
+    state += "\t" * indent + f"depthStencil.depthWriteEnable = {depth.depthWriteEnable};\n"
+    state += "\t" * indent + f"depthStencil.depthCompareOp = {depth.depthCompareOp};\n"
+    state += "\t" * indent + f"depthStencil.depthBoundsTestEnable = {depth.depthBoundsTestEnable};\n"
+    state += "\t" * indent + f"depthStencil.stencilTestEnable = {depth.stencilTestEnable};\n"
+    
+    return state
+
+def BuildPipelineInfo(
+        ctx: VkForgeContext, 
+        pipelineModule: VkPipelineModel, 
+        pipelineName: str, 
+        shaderIds: list,
+        indent: int = 1
+) -> str:
+    info = "\n"
+    indent2 = indent + 1
+    
+    info += "\t" * indent + "VkGraphicsPipelineCreateInfo pipelineInfo = {0};\n"
+    info += "\t" * indent + "pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;\n"
+    info += "\t" * indent + "pipelineInfo.pNext = next;\n"
+    info += "\t" * indent + "pipelineInfo.stageCount = sizeof(stageInfo)/sizeof(VkPipelineShaderStageCreateInfo);\n"
+    info += "\t" * indent + "pipelineInfo.pStages = stageInfo;\n"
+    info += "\t" * indent + "pipelineInfo.pVertexInputState = &inputStateInfo;\n"
+    info += "\t" * indent + "pipelineInfo.pInputAssemblyState = &inputAssemblyInfo;\n"
+    info += "\t" * indent + "pipelineInfo.pRasterizationState = &rasterizerInfo;\n"
+    info += "\t" * indent + "pipelineInfo.pColorBlendState = &colorBlending;\n"
+    info += "\t" * indent + "pipelineInfo.pDepthStencilState = &depthStencil;\n"
+    info += "\t" * indent + "pipelineInfo.pDynamicState = &dynamicInfo;\n"
+    info += "\t" * indent + "pipelineInfo.pViewportState = &viewportState;\n"
+    info += "\t" * indent + "pipelineInfo.pMultisampleState = &multisampleState;\n"
+    info += "\t" * indent + "pipelineInfo.layout = pipeline_layout;\n"
+    
+    return info
+
+def BuildPipeline(ctx: VkForgeContext, pipelineModule: VkPipelineModel) -> str:
     pipelineName = pipelineModule.name
     shaderIds = ctx.shaderData[SHADER.COMBO][pipelineName]
 
-    pipeline = ""
+    indent = 1
+    indent2 = indent + 1
+
+    pipeline = "\n"
+    pipeline += "\t" * indent + "VkResult result;\n"
+    pipeline += "\t" * indent + "VkPipeline pipeline = VK_NULL_HANDLE;\n"
+    pipeline += "\n"
+    
+    # Build all pipeline states
     pipeline += BuildShaderStage(ctx, pipelineModule, pipelineName, shaderIds)
     pipeline += BuildInputBinding(ctx, pipelineModule, pipelineName, shaderIds)
     pipeline += BuildInputAttribute(ctx, pipelineModule, pipelineName, shaderIds)
-
-    return pipeline
+    pipeline += BuildInputState(ctx, pipelineModule, pipelineName, shaderIds)
+    pipeline += BuildInputAssembly(ctx, pipelineModule, pipelineName, shaderIds)
+    pipeline += BuildViewportState(ctx, pipelineModule, pipelineName, shaderIds)
+    pipeline += BuildRasterizationState(ctx, pipelineModule, pipelineName, shaderIds)
+    pipeline += BuildMultisampleState(ctx, pipelineModule, pipelineName, shaderIds)
+    pipeline += BuildDepthStencilState(ctx, pipelineModule, pipelineName, shaderIds)
+    pipeline += BuildColorBlendAttachment(ctx, pipelineModule, pipelineName, shaderIds)
+    pipeline += BuildColorBlendState(ctx, pipelineModule, pipelineName, shaderIds)
+    pipeline += BuildDynamicState(ctx, pipelineModule, pipelineName, shaderIds)
+    pipeline += BuildPipelineInfo(ctx, pipelineModule, pipelineName, shaderIds)
+    
+    # Pipeline creation call
+    pipeline += "\t" * indent + f"result = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, allocator, &pipeline);\n"
+    pipeline += "\t" * indent + "if (result != VK_SUCCESS) {\n"
+    pipeline += "\t" * indent2 + "SDL_LogError(0, \"Failed to create pipeline %s\");\n" % pipelineName
+    pipeline += "\t" * indent2 + "return VK_NULL_HANDLE;\n"
+    pipeline += "\t" * indent + "}\n\n"
+    
+    # Cleanup shader modules
+    for shaderId in shaderIds:
+        shader = ctx.shaderData[SHADER.LIST][shaderId]
+        shader_mode = shader[SHADER.MODE]
+        pipeline += "\t" * indent + f"vkDestroyShaderModule(device, shader_{shader_mode}, allocator);\n"
+    pipeline += "\n"
+    
+    pipeline += "\t" * indent + "return pipeline;\n"
+    
+    # Wrap in function
+    function_body = pipeline
+    function_def = f"""\
+VkPipeline VkForge_CreatePipelineFor{pipelineName}
+(
+    VkAllocationCallbacks* allocator,
+    void* next,
+    VkDevice device,
+    VkPipelineLayout pipeline_layout
+)\n{{\n{function_body}}}\n
+"""
+    
+    return function_def
 
 def CreatePipelines(ctx: VkForgeContext):
     pipelines = ""
@@ -377,7 +464,5 @@ def CreatePipelines(ctx: VkForgeContext):
 
 def GetPipelineStrings(ctx: VkForgeContext):
     return [
-        CreateForgeReferencedLayoutDesign(ctx),
-        CreateForgeLayout(ctx),
         CreatePipelines(ctx)
     ]

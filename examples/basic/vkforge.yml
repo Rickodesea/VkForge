@@ -1,3 +1,11 @@
+ID: VkForge 0.5
+
+UserDefined:
+  includes:
+  - <stdlib.h>
+  insertions:
+  - extern int MY_VAL;
+
 InstanceCreateInfo:
   useValidationFeatureEnableBestPracticesEXT: false
 
@@ -12,28 +20,28 @@ DeviceCreateInfo:
     geometryShader: true
 
 Pipeline:
-  - name: my_pipeline
+  - name: MyPipeline
     ShaderModule:
       - path: vert.vert
       - path: frag.frag
     VertexInputBindingDescription:
       - stride: Vertex
         first_location: 0
-  - name: default
+  - name: Default
     ShaderModule:
       - path: default.vert
       - path: default.frag
     VertexInputBindingDescription:
       - stride: sizeof(long)
         first_location: 0
-  - name: mix
+  - name: Mix
     ShaderModule:
       - path: default.vert
       - path: frag.frag
     VertexInputBindingDescription:
       - stride: sizeof(long)
         first_location: 0
-  - name: different
+  - name: Different
     ShaderModule:
       - path: different.vert
       - path: different.frag

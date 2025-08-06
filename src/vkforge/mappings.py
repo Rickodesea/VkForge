@@ -327,5 +327,6 @@ class FILE(StringEnum):
     FUNC       = "vkforge_funcdecls.h"
     PIPELINE_C = "vkforge_pipelines.c"
     PIPELINE_H = "vkforge_pipelines.h"
+    LAYOUT     = "vkforge_layout.c"
     CMAKE      = "CMakeLists.txt"
 

@@ -34,13 +34,13 @@ from typing import List, Optional, Literal, Union
 import re
 from .mappings import *
 
-class UserExternalModel(BaseModel):
-    includeHeadersPreprocessor: Optional[List[str]] = Field(
+class UserDefinedModel(BaseModel):
+    includes: Optional[List[str]] = Field(
         default=None,
-        description="#include of User headers. List the header names. If it is a standard header "
-        "wrap in angle brackets. Eg: - MyHeader - <MyStandardHeader>"
+        description="#include of User headers. List the header filenames. If it is a standard header "
+        "wrap in angle brackets. Eg: - MyHeader - <MyStandardHeader>. It will be generated as #include fileName"
     )
-    insertDeclarations: Optional[List[str]] = Field(
+    insertions: Optional[List[str]] = Field(
         default=None,
         description="Inserts user defined strings into the generated code. The code is expected to be "
         "declaration type code because it will be included in the generated headers."
@@ -51,7 +51,7 @@ class UserExternalModel(BaseModel):
 class VkInstanceCreateInfoModel(BaseModel):
     
     useValidationFeatureEnableBestPracticesEXT: Optional[bool] = Field(
-        default=False,
+        default="VK_FALSE",
         description="Set to True to enable VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT"
     )
 
@@ -295,13 +295,13 @@ class VkPipelineRasterizationStateCreateInfoModel(BaseModel):
         default=1.0, description="Width of rasterized line."
     )
     depthClampEnable: Optional[bool] = Field(
-        default=False, description="Enables depth clamping."
+        default="VK_FALSE", description="Enables depth clamping."
     )
     rasterizerDiscardEnable: Optional[bool] = Field(
-        default=False, description="Discard primitives before rasterization."
+        default="VK_FALSE", description="Discard primitives before rasterization."
     )
     depthBiasEnable: Optional[bool] = Field(
-        default=False, description="Enable depth bias during rasterization."
+        default="VK_FALSE", description="Enable depth bias during rasterization."
     )
     depthBiasConstantFactor: Optional[float] = Field(
         default=0, description="Constant depth bias factor."
@@ -313,20 +313,131 @@ class VkPipelineRasterizationStateCreateInfoModel(BaseModel):
         default=0, description="Slope factor applied to depth bias."
     )
 
-
-class VkPipelineModel(BaseModel):
-    name: Optional[str] = Field(None, description="User defined pipeline name.")
-    extern_import: Optional[List[str]] = Field(
-        default=[], description="List of user-defined header imports (includes)."
+class VkPipelineMultisampleStateCreateInfoModel(BaseModel):
+    rasterizationSamples: Optional[str] = Field(
+        default="VK_SAMPLE_COUNT_1_BIT",
+        description="Number of samples used for rasterization"
+    )
+    sampleShadingEnable: Optional[bool] = Field(
+        default="VK_FALSE",
+        description="Enable sample shading"
+    )
+    minSampleShading: Optional[float] = Field(
+        default=0.0,
+        description="Minimum fraction of sample shading"
+    )
+    pSampleMask: Optional[List[str]] = Field(
+        default=None,
+        description="Array of sample masks"
+    )
+    alphaToCoverageEnable: Optional[bool] = Field(
+        default="VK_FALSE",
+        description="Enable alpha to coverage"
+    )
+    alphaToOneEnable: Optional[bool] = Field(
+        default="VK_FALSE",
+        description="Enable alpha to one"
     )
 
+class VkPipelineColorBlendAttachmentStateModel(BaseModel):
+    blendEnable: Optional[bool] = Field(
+        default="VK_TRUE",
+        description="Enable blending"
+    )
+    srcColorBlendFactor: Optional[str] = Field(
+        default="VK_BLEND_FACTOR_SRC_ALPHA",
+        description="Source color blend factor"
+    )
+    dstColorBlendFactor: Optional[str] = Field(
+        default="VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA",
+        description="Destination color blend factor"
+    )
+    colorBlendOp: Optional[str] = Field(
+        default="VK_BLEND_OP_ADD",
+        description="Color blend operation"
+    )
+    srcAlphaBlendFactor: Optional[str] = Field(
+        default="VK_BLEND_FACTOR_ONE",
+        description="Source alpha blend factor"
+    )
+    dstAlphaBlendFactor: Optional[str] = Field(
+        default="VK_BLEND_FACTOR_ZERO",
+        description="Destination alpha blend factor"
+    )
+    alphaBlendOp: Optional[str] = Field(
+        default="VK_BLEND_OP_ADD",
+        description="Alpha blend operation"
+    )
+    colorWriteMask: Optional[str] = Field(
+        default="VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT",
+        description="Color write mask"
+    )
+
+class VkPipelineColorBlendStateCreateInfoModel(BaseModel):
+    logicOpEnable: Optional[bool] = Field(
+        default="VK_FALSE",
+        description="Enable logical operation"
+    )
+    logicOp: Optional[str] = Field(
+        default="VK_LOGIC_OP_COPY",
+        description="Logical operation to apply"
+    )
+    attachments: Optional[List[VkPipelineColorBlendAttachmentStateModel]] = Field(
+        default_factory=lambda: [VkPipelineColorBlendAttachmentStateModel()],
+        description="Array of color blend attachment states"
+    )
+    blendConstants: Optional[List[float]] = Field(
+        default=[0.0, 0.0, 0.0, 0.0],
+        description="Blend constants for RGBA"
+    )
+
+class VkPipelineDepthStencilStateCreateInfoModel(BaseModel):
+    depthTestEnable: Optional[bool] = Field(
+        default="VK_FALSE",
+        description="Enable depth testing"
+    )
+    depthWriteEnable: Optional[bool] = Field(
+        default="VK_FALSE",
+        description="Enable depth writes"
+    )
+    depthCompareOp: Optional[str] = Field(
+        default="VK_COMPARE_OP_LESS",
+        description="Depth comparison operator"
+    )
+    depthBoundsTestEnable: Optional[bool] = Field(
+        default="VK_FALSE",
+        description="Enable depth bounds test"
+    )
+    stencilTestEnable: Optional[bool] = Field(
+        default="VK_FALSE",
+        description="Enable stencil testing"
+    )
+    front: Optional[dict] = Field(
+        default=None,
+        description="Front stencil state"
+    )
+    back: Optional[dict] = Field(
+        default=None,
+        description="Back stencil state"
+    )
+    minDepthBounds: Optional[float] = Field(
+        default=0.0,
+        description="Minimum depth bounds"
+    )
+    maxDepthBounds: Optional[float] = Field(
+        default=1.0,
+        description="Maximum depth bounds"
+    )
+
+class VkPipelineModel(BaseModel):
+    name: str = Field(..., description="User defined pipeline name.")
     ShaderModule: List[VkShaderModuleModel] = Field(
         ..., description="List of shader modules."
     )
     VertexInputBindingDescription: List[VkVertexInputBindingDescriptionModel] = Field(
         ..., description="List of vertex input binding descriptions."
     )
-    PipelineInputAssemblyStateCreateInfo: Optional[
+    InputAssemblyStateCreateInfo: Optional[
         VkPipelineInputAssemblyStateCreateInfoModel
     ] = Field(
         default_factory=VkPipelineInputAssemblyStateCreateInfoModel,
@@ -392,11 +503,39 @@ class VkPipelineModel(BaseModel):
         ],
         description="List of dynamic state enables (viewport and scissor always required).",
     )
-    PipelineRasterizationStateCreateInfo: Optional[
+    RasterizationStateCreateInfo: Optional[
         VkPipelineRasterizationStateCreateInfoModel
     ] = Field(
         default_factory=VkPipelineRasterizationStateCreateInfoModel,
         description="Rasterization state description.",
+    )
+
+    MultisampleStateCreateInfo: Optional[
+        VkPipelineMultisampleStateCreateInfoModel
+    ] = Field(
+        default_factory=VkPipelineMultisampleStateCreateInfoModel,
+        description="Multisample state description."
+    )
+    
+    ColorBlendAttachmentState: Optional[
+        VkPipelineColorBlendAttachmentStateModel
+    ] = Field(
+        default_factory=VkPipelineColorBlendAttachmentStateModel,
+        description="Color blend attachment state."
+    )
+    
+    ColorBlendStateCreateInfo: Optional[
+        VkPipelineColorBlendStateCreateInfoModel
+    ] = Field(
+        default_factory=VkPipelineColorBlendStateCreateInfoModel,
+        description="Color blend state description."
+    )
+    
+    DepthStencilStateCreateInfo: Optional[
+        VkPipelineDepthStencilStateCreateInfoModel
+    ] = Field(
+        default_factory=VkPipelineDepthStencilStateCreateInfoModel,
+        description="Depth stencil state description."
     )
 
     @field_validator("DynamicState")
@@ -408,11 +547,25 @@ class VkPipelineModel(BaseModel):
         if missing:
             raise ValueError(f"DynamicState must include: {required}!")
         return v
+    
+    @field_validator("name", mode="before")
+    @classmethod
+    def validate_name_starts_uppercase(cls, v):
+        if v and not (v[0].isupper() and v[0].isalpha()):
+            raise ValueError(f"Pipeline name must start with an uppercase alpha letter: '{v}'")
+        return v
 
 
 class VkForgeModel(BaseModel):
-    UserExternal: Optional[UserExternalModel] = Field(
-        default_factory=UserExternalModel, description="References to the User code external to the generated code"
+    ID: Literal[
+        "VkForge 0.5"
+    ] = Field(
+        ...,
+        description="VkForge Identifier"
+    )
+
+    UserDefined: Optional[UserDefinedModel] = Field(
+        default_factory=UserDefinedModel, description="References to the User code external to the generated code"
     )
 
     GenerateOnce: Optional[List[Literal[
@@ -422,7 +575,8 @@ class VkForgeModel(BaseModel):
             FILE.PIPELINE_C,
             FILE.PIPELINE_H,
             FILE.TYPE,
-            FILE.UTIL
+            FILE.UTIL,
+            FILE.LAYOUT
         ]]
     ] = Field(
         default=None,
@@ -450,3 +604,12 @@ class VkForgeModel(BaseModel):
     )
 
     Pipeline: List[VkPipelineModel] = Field(..., description="List of graphics pipelines.")
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_id_present_and_valid(cls, data):
+        if "ID" not in data:
+            raise ValueError("ID:\nThe 'ID' field is required and must be oneof 'VkForge 0.5'")
+        if data["ID"] != "VkForge 0.5":
+            raise ValueError("Invalid VkForge Config")
+        return data
