@@ -5,6 +5,8 @@ UserDefined:
   - <stdlib.h>
   insertions:
   - extern int MY_VAL;
+  - typedef struct Vertex Vertex;
+  - struct Vertex { float x, y, w, h; };
 
 InstanceCreateInfo:
   useValidationFeatureEnableBestPracticesEXT: false

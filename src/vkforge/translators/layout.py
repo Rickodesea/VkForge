@@ -539,7 +539,7 @@ static VkResult CreateDescriptorSetLayoutBindings(
 
     for (uint32_t j = 0; j < set_design->bind_design_count; j++)
     {{
-        const VkForgeLayoutBindDesign* bind = set_design->bind_design_buffer[j];
+        const VkForgeLayoutBindDesign* bind = &set_design->bind_design_buffer[j];
         bindings[j] = (VkDescriptorSetLayoutBinding){{
             .binding = j,
             .descriptorType = bind ? bind->type : 0,
@@ -602,7 +602,7 @@ static VkResult CreatePipelineLayout(
     for (uint32_t i = 0; i < pipeline_design->descriptorset_layout_design_count; i++)
     {{
         const VkForgeLayoutDescriptorSetLayoutDesign* set_design = 
-            pipeline_design->descriptorset_layout_design_buffer[i];
+            &pipeline_design->descriptorset_layout_design_buffer[i];
         
         VkResult result = CreateDescriptorSetLayout(layout->device, set_design, &setLayouts[i]);
         if (result != VK_SUCCESS)
@@ -687,7 +687,7 @@ VkResult VkForge_CreatePipeline(VkForgeLayout* layout, const char* pipeline_name
     if (layout->pipeline_layout_count <= layout_index)
     {{
         const VkForgeLayoutPipelineLayoutDesign* pipeline_design = 
-            VKFORGE_REFERENCED_LAYOUT_DESIGN.pipeline_layout_design_buffer[layout_index];
+            &VKFORGE_REFERENCED_LAYOUT_DESIGN.pipeline_layout_design_buffer[layout_index];
         
         VkResult result = CreatePipelineLayout(layout, pipeline_design, layout_index);
         if (result != VK_SUCCESS)
@@ -727,12 +727,12 @@ VkResult VkForge_CreatePipeline(VkForgeLayout* layout, const char* pipeline_name
 
 def CreateBindPipeline(ctx: VkForgeContext) -> str:
     content = """\
-void VkForge_BindPipeline(VkForgeLayout* layout, const char* pipeline_name)
+void VkForge_BindPipeline(VkForgeLayout* layout, const char* pipeline_name, VkCommandBuffer cmdbuf)
 {{
     assert(layout);
     assert(pipeline_name);
     assert(layout->device);
-    assert(layout->cmdbuf_draw);
+    assert(cmdbuf);
 
     // Find the pipeline
     const VkForgePipelineFunction* pipeline_func = FindPipelineFunction(pipeline_name);
@@ -746,7 +746,7 @@ void VkForge_BindPipeline(VkForgeLayout* layout, const char* pipeline_name)
         layout->pipeline_buffer[pipeline_func->pipeline_index] != VK_NULL_HANDLE)
     {{
         vkCmdBindPipeline(
-            layout->cmdbuf_draw, 
+            cmdbuf, 
             VK_PIPELINE_BIND_POINT_GRAPHICS, 
             layout->pipeline_buffer[pipeline_func->pipeline_index]
         );
