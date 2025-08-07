@@ -425,11 +425,11 @@ static uint32_t VKFORGE_PIPELINE_FUNCTION_COUNT = {pipeline_count};
 
 def CreateCreateForgeLayout(ctx: VkForgeContext) -> str:
     content = """\
-VkForgeLayout* VkForge_CreateLayout(VkForgeCore* forgeCore)
+VkForgeLayout* VkForge_CreateLayout(VkForgeCore* core)
 {{
-    assert(forgeCore);
-    assert(forgeCore->device);
-    assert(forgeCore->physical_device);
+    assert(core);
+    assert(core->device);
+    assert(core->physical_device);
 
     VkForgeLayout* layout = (VkForgeLayout*)SDL_malloc(sizeof(VkForgeLayout));
     if (!layout)
@@ -440,6 +440,8 @@ VkForgeLayout* VkForge_CreateLayout(VkForgeCore* forgeCore)
 
     // Initialize all counts to 0
     SDL_memset(layout, 0, sizeof(VkForgeLayout));
+
+    layout->device = core->device;
     return layout;
 }}
 """
@@ -450,6 +452,8 @@ def CreateDestroyForgeLayout(ctx: VkForgeContext) -> str:
 void VkForge_DestroyLayout(VkForgeLayout* layout)
 {{
     if (!layout) return;
+
+    vkDeviceWaitIdle(layout->device);
     
     // Destroy all pipelines
     for (uint8_t i = 0; i < layout->pipeline_count; i++)

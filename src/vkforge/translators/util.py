@@ -4,7 +4,7 @@ from vkforge.mappings import *
 
 def CreateDebugMsgCallback(ctx: VkForgeContext) -> str:
     content = """\
-VKAPI_ATTR VkBool32 VKAPI_CALL {name}
+VKAPI_ATTR VkBool32 VKAPI_CALL VkForge_DebugMsgCallback
 (
     VkDebugUtilsMessageSeverityFlagBitsEXT severity,
     VkDebugUtilsMessageTypeFlagsEXT type,
@@ -41,7 +41,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL {name}
     return VK_FALSE;
 }}
 """
-    output = content.format(name=FUNC_NAME.DEBUG_CALLBACK)
+    output = content.format()
 
     return output
 
@@ -70,7 +70,7 @@ def CreateDebugMsgInfo(ctx: VkForgeContext) -> str:
                 messageType += mt
 
     content = """\
-VkDebugUtilsMessengerCreateInfoEXT {name}()
+VkDebugUtilsMessengerCreateInfoEXT VkForge_GetDebugUtilsMessengerCreateInfo()
 {{
     VkDebugUtilsMessengerCreateInfoEXT createInfo = {{0}};
     createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -78,15 +78,13 @@ VkDebugUtilsMessengerCreateInfoEXT {name}()
         {messageSeverity};
     createInfo.messageType =
         {messageType};
-    createInfo.pfnUserCallback = {callback};
+    createInfo.pfnUserCallback = VkForge_DebugMsgCallback;
     return createInfo;
 }}
 """
     output = content.format(
-        name=FUNC_NAME.DEBUG_INFO, 
         messageSeverity=messageSeverity,
         messageType=messageType,
-        callback=FUNC_NAME.DEBUG_CALLBACK
     )
 
     return output
@@ -94,7 +92,7 @@ VkDebugUtilsMessengerCreateInfoEXT {name}()
 
 def CreateScorePhysicalDevice(ctx: VkForgeContext) -> str:
     content = """\
-uint32_t {name}(VkPhysicalDeviceLimits limits)
+uint32_t VkForge_ScorePhysicalDeviceLimits(VkPhysicalDeviceLimits limits)
 {{
     uint32_t score = 0;
     score += limits.maxImageDimension1D;
@@ -177,14 +175,14 @@ uint32_t {name}(VkPhysicalDeviceLimits limits)
     return score;
 }}
 """
-    output = content.format(name=FUNC_NAME.SCORE)
+    output = content.format()
 
     return output
 
 
 def CreateFence(ctx: VkForgeContext) -> str:
     content = """\
-VkFence {name}(VkDevice device, VkAllocationCallbacks* allocator)
+VkFence VkForge_CreateFence(VkDevice device)
 {{
     VkFenceCreateInfo createInfo = {{0}};
     createInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -192,7 +190,7 @@ VkFence {name}(VkDevice device, VkAllocationCallbacks* allocator)
     VkFence fence = VK_NULL_HANDLE;
     VkResult result;
 
-    result = vkCreateFence(device, &createInfo, allocator, &fence);
+    result = vkCreateFence(device, &createInfo, 0, &fence);
 
     if( VK_SUCCESS != result )
     {{
@@ -203,14 +201,14 @@ VkFence {name}(VkDevice device, VkAllocationCallbacks* allocator)
     return fence;
 }}
 """
-    output = content.format(name=FUNC_NAME.FENCE)
+    output = content.format()
 
     return output
 
 
 def CreateSemaphore(ctx: VkForgeContext) -> str:
     content = """\
-VkSemaphore {name}(VkDevice device, VkAllocationCallbacks* allocator)
+VkSemaphore VkForge_CreateSemaphore(VkDevice device)
 {{
     VkSemaphoreCreateInfo createInfo = {{0}};
     createInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -218,7 +216,7 @@ VkSemaphore {name}(VkDevice device, VkAllocationCallbacks* allocator)
     VkSemaphore semaphore = VK_NULL_HANDLE;
     VkResult result;
 
-    result = vkCreateFence(device, &createInfo, allocator, &semaphore);
+    result = vkCreateFence(device, &createInfo, 0, &semaphore);
 
     if( VK_SUCCESS != result )
     {{
@@ -229,73 +227,14 @@ VkSemaphore {name}(VkDevice device, VkAllocationCallbacks* allocator)
     return semaphore;
 }}
 """
-    output = content.format(name=FUNC_NAME.SEMAPHORE)
-
-    return output
-
-
-def CreateGetCache(ctx: VkForgeContext) -> str:
-    content = """\
-void {name}
-(
-    VkAllocationCallbacks* allocator,
-    void*                  next,
-    VkInstance             instance,
-    VkSurfaceKHR           surface,
-    VkPhysicalDevice       physical_device,
-
-    {cacheType}*          retCache
-)
-{{
-    assert(retCache);
-
-    (void)allocator;
-    (void)next;
-
-    VkResult result;
-    {cacheType} cache = {{0}};
-
-    {enum}(
-        formats,
-        VkSurfaceFormatKHR,
-        vkGetPhysicalDeviceSurfaceFormatsKHR,
-        64,
-        physical_device,
-        surface
-    );
-
-    for (uint32_t i = 0; i < formats_count; i++)
-    {{
-        cache.surface_fmt = formats_buffer[i].format;
-        if ({reqFormat} == formats_buffer[i].format)
-            break;
-    }}
-
-    result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &cache.surface_cap);
-
-    if( VK_SUCCESS != result )
-    {{
-        SDL_Log("Failed to get Vulkan physical device surface capabilities");
-        exit(1);
-    }}
-
-    *retCache = cache;
-}}
-
-"""
-    output = content.format(
-        name=FUNC_NAME.CACHE, 
-        cacheType=TYPE_NAME.CACHE, 
-        enum=FUNC_NAME.ENUM, 
-        reqFormat="UNION"
-    )
+    output = content.format()
 
     return output
 
 
 def CreateCmdImageBarrier(ctx: VkForgeContext) -> str:
     content = """\
-void {name}
+void VkForge_CmdImageBarrier
 (
     VkCommandBuffer cmdbuf,
 
@@ -333,14 +272,14 @@ void {name}
 
 
 """
-    output = content.format(name=FUNC_NAME.IMAGE_BARRIER)
+    output = content.format()
 
     return output
 
 
 def CreateCmdBufferBarrier(ctx: VkForgeContext) -> str:
     content = """\
-void {name}
+void VkForge_CmdBufferBarrier
 (
     VkCommandBuffer cmdbuf,
 
@@ -375,21 +314,21 @@ void {name}
 }}
 
 """
-    output = content.format(name=FUNC_NAME.BUFFER_BARRIER)
+    output = content.format()
 
     return output
 
 
 def CreateGetSurfaceFormat(ctx: VkForgeContext) -> str:
     content = """\
-VkSurfaceFormatKHR {name}
+VkSurfaceFormatKHR VkForge_GetSurfaceFormat
 (
     VkPhysicalDevice physical_device,
     VkSurfaceKHR     surface,
     VkFormat         req_format
 )
 {{
-    {enum}(
+    VKFORGE_ENUM(
         formats,
         VkSurfaceFormatKHR,
         vkGetPhysicalDeviceSurfaceFormatsKHR,
@@ -408,17 +347,14 @@ VkSurfaceFormatKHR {name}
 }}
 
 """
-    output = content.format(
-        name=FUNC_NAME.SURFACE_FORMAT,
-        enum=FUNC_NAME.ENUM
-    )
+    output = content.format()
 
     return output
 
 
 def CreateGetSurfaceCapabilities(ctx: VkForgeContext) -> str:
     content = """\
-VkSurfaceCapabilitiesKHR {name}
+VkSurfaceCapabilitiesKHR VkForge_GetSurfaceCapabilities
 (
     VkPhysicalDevice physical_device,
     VkSurfaceKHR     surface
@@ -437,13 +373,13 @@ VkSurfaceCapabilitiesKHR {name}
 }}
 
 """
-    output = content.format(name=FUNC_NAME.SURFACE_CAP)
+    output = content.format()
 
     return output
 
 def CreateGetSwapchainSize(ctx:VkForgeContext) -> str:
     content = """\
-uint32_t {name}
+uint32_t VkForge_GetSwapchainSize
 (
     VkPhysicalDevice physical_device,
     VkSurfaceKHR     surface,
@@ -451,7 +387,7 @@ uint32_t {name}
 )
 {{
 
-    VkSurfaceCapabilitiesKHR surface_cap = GetSurfaceCapabilities(physical_device, surface);
+    VkSurfaceCapabilitiesKHR surface_cap = VkForge_GetSurfaceCapabilities(physical_device, surface);
 
     if ( surface_cap.maxImageCount == 0 )
     {{
@@ -467,20 +403,20 @@ uint32_t {name}
 }}
 
 """
-    output = content.format(name=FUNC_NAME.SWAPCHAIN_SIZE)
+    output = content.format()
 
     return output
 
 def CreateGetPresentMode(ctx: VkForgeContext) -> str:
     content = """\
-VkPresentModeKHR {name}
+VkPresentModeKHR VkForge_GetPresentMode
 (
     VkPhysicalDevice physical_device,
     VkSurfaceKHR     surface,
     VkPresentModeKHR req_mode
 )
 {{
-    {enum}(
+    VKFORGE_ENUM(
         modes,
         VkPresentModeKHR,
         vkGetPhysicalDeviceSurfacePresentModesKHR,
@@ -498,17 +434,14 @@ VkPresentModeKHR {name}
 }}
 
 """
-    output = content.format(
-        name=FUNC_NAME.PRESENT_MODE,
-        enum=FUNC_NAME.ENUM
-    )
+    output = content.format()
 
     return output
 
 
 def CreateGetMemoryTypeIndex(ctx: VkForgeContext) -> str:
     content = """\
-uint32_t {name}
+uint32_t VkForge_GetMemoryTypeIndex
 (
     VkPhysicalDevice      physical_device,
     uint32_t              typeFilter,
@@ -533,23 +466,635 @@ uint32_t {name}
 }}
 
 """
-    output = content.format(name=FUNC_NAME.MEMORY_TYPE)
+    output = content.format()
 
     return output
 
+def CreateCreateBufferAlloc(ctx: VkForgeContext) -> str:
+    content = """\
+VkForgeBufferAlloc VkForge_CreateBufferAlloc
+(
+    VkPhysicalDevice           physical_device,
+    VkDevice                   device,
+    VkDeviceSize               size,
+    VkBufferUsageFlags         usage,
+    VkMemoryPropertyFlags      properties
+)
+{{
+    VkResult result;
+    VkMemoryRequirements memRequirements;
+    VkForgeBufferAlloc allocation = {{0}};
+
+    allocation.buffer = VkForge_CreateBuffer(device, size, usage, &memRequirements);
+    allocation.memory = VkForge_AllocDeviceMemory(physical_device, device, memRequirements, properties);
+    allocation.size   = memRequirements.size;
+    VkForge_BindBufferMemory(device, allocation.buffer, allocation.memory, 0);
+
+    return allocation;
+}}
+"""
+    return content.format()
+
+def CreateCreateImageAlloc(ctx: VkForgeContext) -> str:
+    content = """\
+VkForgeImageAlloc VkForge_CreateImageAlloc
+(
+    VkPhysicalDevice           physical_device,
+    VkDevice                   device,
+    uint32_t                   width,
+    uint32_t                   height,
+    VkFormat                   format,
+    VkImageUsageFlags          usage,
+    VkMemoryPropertyFlags      properties
+)
+{{
+    VkResult result;
+    VkMemoryRequirements memRequirements;
+    VkForgeImageAlloc allocation = {{0}};
+
+    allocation.image  = VkForge_CreateImage(device, width, height, format, usage, &memRequirements);
+    allocation.memory = VkForge_AllocDeviceMemory(physical_device, device, memRequirements, properties);
+    allocation.size   = memRequirements.size;
+    VkForge_BindBufferMemory(device, allocation.image, allocation.memory, 0);
+
+    return allocation;
+}}
+"""
+    return content.format()
+
+def CreateCreateImageOffset(ctx: VkForgeContext) -> str:
+    content = """\
+VkImage VkForge_CreateOffsetImage
+(
+    VkDevice                   device,
+    VkDeviceMemory             memory,
+    VkDeviceSize               offset,
+    uint32_t                   width,
+    uint32_t                   height,
+    VkFormat                   format,
+    VkImageUsageFlags          usage
+)
+{{
+    VkImageCreateInfo imageInfo = {{0}};
+    imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.imageType     = VK_IMAGE_TYPE_2D;
+    imageInfo.extent.width  = width;
+    imageInfo.extent.height = height;
+    imageInfo.extent.depth  = 1;
+    imageInfo.mipLevels     = 1;
+    imageInfo.arrayLayers   = 1;
+    imageInfo.format        = format;
+    imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.usage         = usage;
+    imageInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+
+    VkImage image;
+    VkResult result = vkCreateImage(device, &imageInfo, 0, &image);
+    if (VK_SUCCESS != result) 
+    {{
+        SDL_LogError(0, "Failed to create offset image");
+        exit(1);
+    }}
+
+    result = vkBindImageMemory(device, image, memory, offset);
+    if (VK_SUCCESS != result) 
+    {{
+        SDL_LogError(0, "Failed to bind offset image memory");
+        exit(1);
+    }}
+
+    return image;
+}}
+"""
+    return content.format()
+
+def CreateCreateBufferOffset(ctx: VkForgeContext) -> str:
+    content = """\
+VkBuffer VkForge_CreateOffsetBuffer
+(
+    VkDevice                   device,
+    VkDeviceMemory             memory,
+    VkDeviceSize               offset,
+    VkDeviceSize               size,
+    VkBufferUsageFlags         usage
+)
+{{
+    VkBufferCreateInfo bufferInfo = {{0}};
+    bufferInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size        = size;
+    bufferInfo.usage       = usage;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VkBuffer buffer;
+    VkResult result = vkCreateBuffer(device, &bufferInfo, 0, &buffer);
+    if (VK_SUCCESS != result) 
+    {{
+        SDL_LogError(0, "Failed to create offset buffer");
+        exit(1);
+    }}
+
+    result = vkBindBufferMemory(device, buffer, memory, offset);
+    if (VK_SUCCESS != result) 
+    {{
+        SDL_LogError(0, "Failed to bind offset buffer memory");
+        exit(1);
+    }}
+
+    return buffer;
+}}
+"""
+    return content.format()
+
+def CreateStagingBuffer(ctx: VkForgeContext):
+    content = """VkForgeBufferAlloc VkForge_CreateStagingBuffer
+(
+    VkPhysicalDevice physical_device,
+    VkDevice device,
+    VkDeviceSize size
+)
+{{
+    return VkForge_CreateBufferAlloc
+    (
+        physical_device,
+        device,
+        size,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+    );
+}}
+"""
+    return content.format()
+
+def CreateTexture(ctx: VkForgeContext):
+    content = """\
+VkForgeTexture VkForge_CreateTexture
+(
+    VkPhysicalDevice physical_device,
+    VkDevice device,
+    VkQueue queue,
+    VkCommandBuffer commandBuffer,
+    const char* filename
+)
+{{
+    VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
+    VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    VkFilter filter = VK_FILTER_LINEAR;
+
+    VkForgeTexture texture = {{0}};
+    
+    SDL_Surface* surface = IMG_Load(filename);
+    if (!surface) 
+    {{
+        SDL_LogError(0, "Failed to load texture image: %%s", filename);
+        exit(1);
+    }}
+
+    if (SDL_BYTESPERPIXEL(surface->format) != 4) 
+    {{
+        SDL_Surface* converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA8888);
+        SDL_DestroySurface(surface);
+        if (!converted) 
+        {{
+            SDL_LogError(0, "Failed to convert surface format: %%s", filename);
+            return texture;
+        }}
+        surface = converted;
+    }}
+
+    texture.width = surface->w;
+    texture.height = surface->h;
+    texture.format = format;
+    texture.samples = VK_SAMPLE_COUNT_1_BIT;
+
+    VkDeviceSize imageSize = surface->pitch * surface->h;
+
+    VkForgeBufferAlloc staging = VkForge_CreateStagingBuffer(physical_device, device, imageSize);
+
+    void* data;
+    vkMapMemory(device, staging.memory, 0, imageSize, 0, &data);
+    SDL_memcpy(data, surface->pixels, imageSize);
+    vkUnmapMemory(device, staging.memory);
+    SDL_DestroySurface(surface);
+
+    VkForgeImageAlloc imageAlloc = VkForge_CreateImageAlloc
+    (
+        physical_device,
+        device,
+        texture.width,
+        texture.height,
+        texture.format,
+        usage,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+    );
+
+    texture.image = imageAlloc.image;
+    texture.memory = imageAlloc.memory;
+
+    VkForge_BeginCommandBuffer(commandBuffer);
+
+    VkForge_CmdImageBarrier
+    (
+        commandBuffer,
+        texture.image,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        0,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT
+    );
+
+    VkForge_CmdCopyBufferToImage
+    (
+        commandBuffer, 
+        staging.buffer,
+        texture.image,
+        0, 0,
+        texture.width, texture.height,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+    );
+
+    VkForge_CmdImageBarrier
+    (
+        commandBuffer,
+        texture.image,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+    );
+
+    VkForge_EndCommandBuffer(commandBuffer);
+
+    VkFence fence = VkForge_CreateFence(device);
+    VkForge_QueueSubmit(device, commandBuffer, fence);
+    vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+
+    vkDestroyFence(device, fence, 0);
+    VkForge_DestroyBufferAlloc(device, staging);
+
+    texture.imageView = VkForge_CreateImageView(device, texture.image, format);
+    texture.sampler = VkForge_CreateSampler(device, filter, addressMode);
+
+    return texture;
+}}
+"""
+    return content.format()
+
+def CreateBeginCommandBuffer(ctx: VkForgeContext):
+    content = """\
+void VkForge_BeginCommandBuffer(VkCommandBuffer cmdBuf)
+{{
+    VkCommandBufferBeginInfo beginInfo = {{0}};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    VkResult result = vkBeginCommandBuffer(cmdBuf, &beginInfo);
+
+    if( VK_SUCCESS != result )
+    {{
+        SDL_LogError(0, "Failed to Begin command buffer");
+        exit(1);
+    }}
+}}
+"""
+    return content.format()
+
+def CreateEndCommandBuffer(ctx: VkForgeContext):
+    content = """\
+void VkForge_EndCommandBuffer(VkCommandBuffer cmdBuf)
+{{
+    VkResult result = vkEndCommandBuffer(cmdBuf);
+
+    if( VK_SUCCESS != result )
+    {{
+        SDL_LogError(0, "Failed to End command buffer");
+        exit(1);
+    }}
+}}
+"""
+    return content.format()
+
+def CreateCopyBufferToImage(ctx: VkForgeContext):
+    content = """\
+void VkForge_CmdCopyBufferToImage
+(
+    VkCommandBuffer cmdBuf,
+    VkBuffer buffer,
+    VkImage image,
+    float x, float y,
+    float w, float h,
+    VkImageLayout layout
+)
+{{
+    VkBufferImageCopy region = {{0}};
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+    region.imageOffset = (VkOffset3D){{x, y, 0}};
+    region.imageExtent = (VkExtent3D){{w, h, 1}};
+
+    vkCmdCopyBufferToImage(
+        cmdBuf,
+        buffer,
+        image,
+        layout,
+        1,
+        &region
+    );
+}}
+"""
+    return content.format()
+
+def CreateQueueSubmit(ctx: VkForgeContext):
+    content = """\
+void VkForge_QueueSubmit(VkQueue queue, VkCommandBuffer cmdBuf, VkFence fence)
+{{
+    VkSubmitInfo submitInfo = {{0}};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &cmdBuf;
+
+    VkResult result = vkQueueSubmit(queue, 1, &submitInfo, fence);
+
+    if( VK_SUCCESS != result )
+    {{
+        SDL_LogError(0, "Failed to Queue Submit");
+        exit(1);
+    }}
+}}
+"""
+    return content.format()
+
+def CreateImageView(ctx: VkForgeContext):
+    content = """\
+VkImageView VkForge_CreateImageView
+(
+    VkDevice device,
+    VkImage image,
+    VkFormat format
+)
+{{
+    VkImageViewCreateInfo viewInfo = {{0}};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = image;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = format;
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+
+    VkResult result;
+    VkImageView imageView = VK_NULL_HANDLE;
+
+    result = vkCreateImageView(device, &viewInfo, 0, &imageView);
+
+    if ( VK_SUCCESS != result )
+    {{
+        SDL_LogError(0, "Failed to create ImageView");
+        exit(1);
+    }}
+
+    return imageView;
+}}
+"""
+    return content.format()
+
+def CreateSampler(ctx: VkForgeContext):
+    content = """\
+VkSampler VkForge_CreateSampler
+(
+    VkDevice device,
+    VkFilter filter,
+    VkSamplerAddressMode addressMode
+)
+{{
+    // Create sampler
+    VkSamplerCreateInfo samplerInfo = {{0}};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.magFilter = filter;
+    samplerInfo.minFilter = filter;
+    samplerInfo.addressModeU = addressMode;
+    samplerInfo.addressModeV = addressMode;
+    samplerInfo.addressModeW = addressMode;
+    samplerInfo.anisotropyEnable = VK_TRUE;
+    samplerInfo.maxAnisotropy = 16.0f;
+    samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    samplerInfo.unnormalizedCoordinates = VK_FALSE;
+    samplerInfo.compareEnable = VK_FALSE;
+    samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    samplerInfo.mipLodBias = 0.0f;
+    samplerInfo.minLod = 0.0f;
+    samplerInfo.maxLod = 0.0f;
+
+    VkResult result;
+    VkSampler sampler = VK_NULL_HANDLE;
+
+    result = vkCreateSampler(device, &samplerInfo, 0, &sampler);
+
+    if ( VK_SUCCESS != result )
+    {{
+        SDL_LogError(0, "Failed to create Sampler");
+        exit(1);
+    }}
+
+    return sampler;
+}}
+"""
+    return content.format()
+
+def CreateCreateBuffer(ctx: VkForgeContext):
+    content = """\
+VkBuffer VkForge_CreateBuffer
+(
+    VkDevice                   device,
+    VkDeviceSize               size,
+    VkBufferUsageFlags         usage,
+
+    VkMemoryRequirements      *inMemReqs
+)
+{{
+    VkResult result;
+    VkBuffer buffer = VK_NULL_HANDLE;
+
+    VkBufferCreateInfo bufferInfo = {{0}};
+    bufferInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size        = size;
+    bufferInfo.usage       = usage;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VkResult result = vkCreateBuffer(device, &bufferInfo, 0, &buffer);
+    if (VK_SUCCESS != result)
+    {{
+        SDL_LogError(0, "Failed to create buffer");
+        exit(1);
+    }}
+
+    if( inMemReqs )
+    {{
+        VkMemoryRequirements memRequirements = {{0}};
+        vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
+        *inMemReqs = memRequirements;
+    }}
+
+    return buffer;
+}}
+"""
+    return content.format()
+
+def CreateCreateImage(ctx: VkForgeContext):
+    content = """\
+VkImage VkForge_CreateImage
+(
+    VkDevice               device,
+    uint32_t               width,
+    uint32_t               height,
+    VkFormat               format,
+    VkImageUsageFlags      usage,
+
+    VkMemoryRequirements  *inMemReqs
+)
+{{
+    VkImage image = VK_NULL_HANDLE;
+
+    VkImageCreateInfo imageInfo = {{0}};
+    imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.imageType     = VK_IMAGE_TYPE_2D;
+    imageInfo.extent.width  = width;
+    imageInfo.extent.height = height;
+    imageInfo.extent.depth  = 1;
+    imageInfo.mipLevels     = 1;
+    imageInfo.arrayLayers   = 1;
+    imageInfo.format        = format;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.usage         = usage;
+    imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+    imageInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.flags         = 0;
+
+    VkResult result = vkCreateImage(device, &imageInfo, NULL, &image);
+    if (result != VK_SUCCESS)
+    {{
+        SDL_LogError(0, "Failed to create image");
+        exit(1);
+    }}
+
+    if( inMemReqs )
+    {{
+        VkMemoryRequirements memRequirements = {{0}};
+        vkGetBufferMemoryRequirements(device, image, &memRequirements);
+        *inMemReqs = memRequirements;
+    }}
+
+    return image;
+}}
+"""
+    return content.format()
+
+def CreateAllocDeviceMemory(ctx: VkForgeContext):
+    content = """\
+VkDeviceMemory VkForge_AllocDeviceMemory
+(
+    VkPhysicalDevice physical_device,
+    VkDevice device,
+    VkMemoryRequirements memRequirements,
+    VkMemoryPropertyFlags properties
+)
+{{
+    VkMemoryAllocateInfo allocInfo = {{0}};
+    allocInfo.sType               = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize      = memRequirements.size;
+    allocInfo.memoryTypeIndex     = VkForge_GetMemoryTypeIndex
+    (
+        physical_device,
+        memRequirements.memoryTypeBits,
+        properties
+    );
+
+    VkDeviceMemory memory = VK_NULL_HANDLE;
+
+    VkResult result = vkAllocateMemory(device, &allocInfo, 0, &memory);
+    if (VK_SUCCESS != result)
+    {{
+        SDL_LogError(0, "Failed to Allocate Device Memory");
+        exit(1);
+    }}
+
+    return memory;
+}}
+"""
+    return content.format()
+
+def CreateBindBufferMemory(ctx: VkForgeContext):
+    content = """\
+void VkForge_BindBufferMemory(VkDevice device, VkBuffer buffer, VkDeviceMemory memory, VkDeviceSize offset)
+{{
+    VkResult result = vkBindBufferMemory(device, buffer, memory, offset);
+
+    if (VK_SUCCESS != result)
+    {{
+        SDL_LogError(0, "Failed to Bind Buffer to Memory");
+        exit(1);
+    }}
+}}
+"""
+    return content.format()
+
+def CreateBindImageMemory(ctx: VkForgeContext):
+    content = """\
+void VkForge_BindImageMemory(VkDevice device, VkImage image, VkDeviceMemory memory, VkDeviceSize offset)
+{{
+    VkResult result = vkBindBufferMemory(device, image, memory, offset);
+
+    if (VK_SUCCESS != result)
+    {{
+        SDL_LogError(0, "Failed to Image to Memory");
+        exit(1);
+    }}
+}}
+"""
+    return content.format()
+
 def GetUtilStrings(ctx: VkForgeContext):
     return [
-        CreateScorePhysicalDevice(ctx),
         CreateDebugMsgInfo(ctx),
         CreateDebugMsgCallback(ctx),
-        CreateCmdBufferBarrier(ctx),
-        CreateCmdImageBarrier(ctx),
-        CreateFence(ctx),
-        CreateSemaphore(ctx),
-        #CreateGetCache(ctx),
+        CreateScorePhysicalDevice(ctx),
         CreateGetMemoryTypeIndex(ctx),
         CreateGetSwapchainSize(ctx),
         CreateGetSurfaceFormat(ctx),
         CreateGetSurfaceCapabilities(ctx),
-        CreateGetPresentMode(ctx),
+        CreateGetPresentMode(ctx),        
+        CreateCmdBufferBarrier(ctx),
+        CreateCmdImageBarrier(ctx),        
+        CreateFence(ctx),
+        CreateSemaphore(ctx),       
+        CreateBeginCommandBuffer(ctx),
+        CreateEndCommandBuffer(ctx),
+        CreateCopyBufferToImage(ctx),
+        CreateQueueSubmit(ctx),
+        CreateCreateBuffer(ctx),
+        CreateCreateBufferAlloc(ctx),
+        CreateCreateBufferOffset(ctx),
+        CreateCreateImage(ctx),
+        CreateCreateImageAlloc(ctx),
+        CreateCreateImageOffset(ctx),
+        CreateStagingBuffer(ctx),
+        CreateImageView(ctx),
+        CreateSampler(ctx),
+        CreateTexture(ctx),
+        CreateAllocDeviceMemory(ctx),
+        CreateBindBufferMemory(ctx),
+        CreateBindImageMemory(ctx)
+        
+        
     ]

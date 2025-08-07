@@ -16,7 +16,7 @@ def BuildShaderStage(
     for shaderId in shaderIds:
         shader = ctx.shaderData[SHADER.LIST][shaderId]
         stageInfo += "\t" * indent + f"VkShaderModule shader_{shader[SHADER.MODE]} = "
-        stageInfo += f"{FUNC_NAME.SHADER}(device, \"{shader[SHADER.BINPATH].as_posix()}\");\n"
+        stageInfo += f"VkForge_CreateShaderModule(device, \"{shader[SHADER.BINPATH].as_posix()}\");\n"
         stageInfo += "\t" * indent + f"if( VK_NULL_HANDLE == shader_{shader[SHADER.MODE]} )\n"
         stageInfo += "\t" * indent + "{\n"
         stageInfo += "\t" * indent2 + f'SDL_LogError(0, "Failed to create {shader[SHADER.MODE]} shader for {pipelineName} pipeline\\n");\n'

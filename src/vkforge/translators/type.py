@@ -111,6 +111,24 @@ def CreateMaxes(ctx: VkForgeContext) -> str:
 
     return output
 
+def CreateTexture(ctx: VkForgeContext):
+    content = """\
+typedef struct VkForgeTexture VkForgeTexture;
+
+struct VkForgeTexture
+{{
+    VkImage image;                      // The actual GPU image
+    VkDeviceMemory memory;              // Memory bound to the VkImage
+    VkImageView imageView;              // Optional: for sampling/viewing the image
+    VkSampler sampler;                  // Sampler used to read from the texture
+    uint32_t width;                     // Texture width in pixels
+    uint32_t height;                    // Texture height in pixels
+    VkSampleCountFlagBits samples;      // Multisample count (e.g., VK_SAMPLE_COUNT_1_BIT)
+    VkFormat format;                    // Image format (e.g., VK_FORMAT_R8G8B8A8_UNORM)
+}};
+"""
+    return content.format()
+
 def GetTypeStrings(ctx: VkForgeContext):
     return [
         CreateMaxes(ctx),
@@ -118,5 +136,6 @@ def GetTypeStrings(ctx: VkForgeContext):
         CreateBufferAllocType(ctx),
         CreateImageAllocType(ctx),
         CreateLayout(ctx),
+        CreateTexture(ctx)
         
     ]

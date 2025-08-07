@@ -3,31 +3,32 @@ from vkforge.mappings import *
 from .core import GetCoreStrings
 from .pipeline import GetPipelineStrings
 from .util import GetUtilStrings
+from .layout import GetLayoutStrings
 import re
 
 def CreateVoidEnum(ctx: VkForgeContext) -> str:
     content = """\
-#define {name}(Var, Type, Func, Sizelimit, ...) \\
+#define VKFORGE_VOID_ENUM(Var, Type, Func, Sizelimit, ...) \\
     Type Var##_buffer[Sizelimit] = {{0}}; uint32_t Var##_count = 0; do {{ \\
     Func(__VA_ARGS__, &Var##_count, 0); \\
     Var##_count = (Var##_count < Sizelimit) ? Var##_count : Sizelimit; \\
     Func(__VA_ARGS__, &Var##_count, Var##_buffer); \\
 }} while(0)
 """
-    output = content.format(name=FUNC_NAME.VOID_ENUM)
+    output = content.format()
 
     return output
 
 def CreateEnum(ctx: VkForgeContext) -> str:
     content = """\
-#define {name}(Var, Type, Func, Sizelimit, ...) \\
+#define VKFORGE_ENUM(Var, Type, Func, Sizelimit, ...) \\
     Type Var##_buffer[Sizelimit] = {{0}}; uint32_t Var##_count = 0; do {{ \\
     Func(__VA_ARGS__, &Var##_count, 0); \\
     Var##_count = (Var##_count < Sizelimit) ? Var##_count : Sizelimit; \\
     Func(__VA_ARGS__, &Var##_count, Var##_buffer); \\
 }} while(0)
 """
-    output = content.format(name=FUNC_NAME.ENUM)
+    output = content.format()
 
     return output
 
@@ -65,6 +66,9 @@ def extract_function_declarations(content: str) -> list[str]:
         return_type = match.group(1).strip()
         name = match.group(2).strip()
         params = match.group(3).strip()
+
+        if 'static ' in return_type:
+            continue
         
         # Reconstruct declaration
         decl = f"{return_type} {name}({params});"
@@ -79,13 +83,14 @@ def CreateDeclarations(ctx: VkForgeContext) -> str:
     # Collect all content from all modules
     all_content = []
     all_content.extend(GetCoreStrings(ctx))
-    all_content.extend(GetPipelineStrings(ctx))
     all_content.extend(GetUtilStrings(ctx))
+    all_content.extend(GetPipelineStrings(ctx))
+    all_content.extend(GetLayoutStrings(ctx))
     
     # Process each content block
     for content in all_content:
         for decl in extract_function_declarations(content):
-            declarations += decl + "\n"
+            declarations += decl + "\n\n"
     
     return declarations
 

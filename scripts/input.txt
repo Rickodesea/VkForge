@@ -1,22 +1,10 @@
-uint32_t GetSwapchainSize
-(
-    VkPhysicalDevice physical_device,
-    VkSurfaceKHR     surface,
-    uint32_t         req_size
-) 
+void VkForge_BindImageMemory(VkDevice device, VkImage image, VkDeviceMemory memory, VkDeviceSize offset)
 {
-    
-    VkSurfaceCapabilitiesKHR surface_cap = GetSurfaceCapabilities(physical_device, surface);
+    VkResult result = vkBindImageMemory(device, image, memory, offset);
 
-    if ( surface_cap.maxImageCount == 0 ) 
+    if (VK_SUCCESS != result) 
     {
-        return req_size;
+        SDL_LogError(0, "Failed to Bind Image to Memory");
+        exit(1);
     }
-
-    if (req_size <= surface_cap.maxImageCount) 
-    {
-        return req_size;
-    }
-
-    return surface_cap.minImageCount;
 }

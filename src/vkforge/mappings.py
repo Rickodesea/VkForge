@@ -234,7 +234,7 @@ class StringEnum(str, Enum):
     def __format__(self, format_spec):
         return format(self.value, format_spec)
 
-class FUNC_NAME(StringEnum):
+"""class FUNC_NAME(StringEnum):
     DEBUG_CALLBACK = "VkForge_DebugMsgCallback"
     DEBUG_INFO = "VkForge_GetDebugUtilsMessengerCreateInfo"
     SCORE = "VkForge_ScorePhysicalDeviceLimits"
@@ -257,7 +257,7 @@ class FUNC_NAME(StringEnum):
     VOID_ENUM = "VKFORGE_VOID_ENUM"
     INSTANCE = "VkForge_CreateInstance"
     SHADER = "VkForge_CreateShaderModule"
-
+"""
 
 class TYPE_NAME(StringEnum):
     CORE = "VkForgeCore"
