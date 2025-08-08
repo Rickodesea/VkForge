@@ -18,7 +18,7 @@ const char* layers[] =
     }};
 
     const uint32_t layers_count = sizeof(layers) / sizeof(layers[0]);\
-"""
+""".format()
         layer_buffer = "layers"
         layer_count = "layers_count"
 
@@ -41,7 +41,8 @@ VkValidationFeatureEnableEXT enables[] =
     validationFeatures.pEnabledValidationFeatures    = enables;
 
     validationFeatures.pNext = &msgCreateInfo;\
-"""
+""".format()
+        
         next = "&validationFeatures;\n\tvalidationFeatures.pNext=0"
         
     content = """\
@@ -820,18 +821,10 @@ void VkForge_UpdateRender(VkForgeRender* render)
         VkImage     swapImage = render->images  [render->index];
         VkImageView swapView  = render->imgviews[render->index];
 
-        VkForge_CmdImageBarrier(
-            render->drawCmdBuf,
-            swapImage,
-            VK_IMAGE_LAYOUT_UNDEFINED,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            0,
-            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-            VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
-            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
-        );
+        VkForgeImagePair imgPair = {{ swapImage, swapView }};
+        VkForgeQuad quad = {{ 0, 0, render->extent.width, render->extent.height }};
 
-        VkForge_CmdBeginRendering(render->drawCmdBuf, swapView, render->color, 0, 0, render->extent.width, render->extent.height);
+        VkForge_CmdBeginRendering(render->drawCmdBuf, imgPair, render->color, quad);
 
         render->drawCallback(*render);
 

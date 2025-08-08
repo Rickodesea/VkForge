@@ -206,7 +206,9 @@ DebugUtilsMessengerCreateInfoEXT: # optional
   messageSeverity:  #specify severity, etc
   - info
   messageType:
-  - general
+  - general # in some cases simplified values are supported. Check schema.
+  - VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT # all literal Vulkan values supported
+  
 
 DeviceCreateInfo: # optional
   PhysicalDeviceFeatures:
@@ -247,6 +249,18 @@ Pipeline: # requires atleast 1 pipeline
       - stride: 42 # numbers is allowed
         first_location: 0
 
+```
+
+See [schema](src/vkforge/schema.py) for more details on Config Schema for VkForge.
+
+How to Install and Use VkForge:
+```bash
+pip install vkforge
+vkforge -h
+```
+
+```bash
+vkforge examples/basic/vkforge.yml --source-dir build/source/basic --build-dir build --config-roots examples/basic --remove-validations
 ```
 
 See [REFERENCE](REFERENCE.md) for more details.

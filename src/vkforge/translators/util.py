@@ -258,6 +258,7 @@ void VkForge_CmdImageBarrier
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.subresourceRange.levelCount = 1;
     barrier.subresourceRange.layerCount = 1;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
     vkCmdPipelineBarrier(
         cmdbuf,
@@ -1146,18 +1147,26 @@ def CreateBeginRendering(ctx: VkForgeContext):
     content = """\
 void VkForge_CmdBeginRendering
 (
-    VkCommandBuffer cmdbuf,
-    VkImageView     imgView,
-    const char*     clearColorHex,
-    float           x,
-    float           y,
-    float           w,
-    float           h
+    VkCommandBuffer  cmdbuf,
+    VkForgeImagePair imgPair,
+    const char*      clearColorHex,
+    VkForgeQuad      quad
 )
 {{
+    VkForge_CmdImageBarrier(
+        cmdbuf,
+        imgPair.image,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        0,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
+    );
+
     VkRenderingAttachmentInfo colorAttachment = {{0}};
     colorAttachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    colorAttachment.imageView                 = imgView;
+    colorAttachment.imageView                 = imgPair.imgview;
     colorAttachment.imageLayout               = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     colorAttachment.loadOp                    = VK_ATTACHMENT_LOAD_OP_CLEAR;
     colorAttachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
@@ -1169,10 +1178,10 @@ void VkForge_CmdBeginRendering
 
     VkRenderingInfo renderingInfo          = {{0}};
     renderingInfo.sType                    = VK_STRUCTURE_TYPE_RENDERING_INFO;
-    renderingInfo.renderArea.offset.x      = x;
-    renderingInfo.renderArea.offset.y      = y;
-    renderingInfo.renderArea.extent.width  = w;
-    renderingInfo.renderArea.extent.height = h;
+    renderingInfo.renderArea.offset.x      = quad.x;
+    renderingInfo.renderArea.offset.y      = quad.y;
+    renderingInfo.renderArea.extent.width  = quad.w;
+    renderingInfo.renderArea.extent.height = quad.h;
     renderingInfo.layerCount               = 1;
     renderingInfo.colorAttachmentCount     = 1;
     renderingInfo.pColorAttachments        = &colorAttachment;

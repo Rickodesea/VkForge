@@ -174,6 +174,31 @@ typedef void (*VkForgeDestroyCallback)(void);
 """
     return content.format()
 
+def CreateQuad(ctx: VkForgeContext):
+    content = """\
+typedef union VkForgeQuad VkForgeQuad;
+
+union VkForgeQuad
+{{
+    struct {{float x, y, w, h;}};
+    struct {{float s, t, u, v;}};
+    float p[4];
+}};
+"""
+    return content.format()
+
+def CreateImagePair(ctx: VkForgeContext):
+    content = """\
+typedef struct VkForgeImagePair VkForgeImagePair;
+
+struct VkForgeImagePair
+{{
+    VkImage     image;
+    VkImageView imgview;
+}};
+"""
+    return content.format()
+
 def GetTypeStrings(ctx: VkForgeContext):
     return [
         CreateMaxes(ctx),
@@ -183,6 +208,8 @@ def GetTypeStrings(ctx: VkForgeContext):
         CreateLayout(ctx),
         CreateTexture(ctx),
         CreateRender(ctx),
-        CreateDestroyCallback(ctx)
+        CreateDestroyCallback(ctx),
+        CreateQuad(ctx),
+        CreateImagePair(ctx)
         
     ]
