@@ -732,7 +732,7 @@ VkForgeTexture VkForge_CreateTexture
     VkForge_EndCommandBuffer(commandBuffer);
 
     VkFence fence = VkForge_CreateFence(device);
-    VkForge_QueueSubmit(device, commandBuffer, fence);
+    VkForge_QueueSubmit(device, commandBuffer, 0, 0, 0, fence);
     vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
 
     vkDestroyFence(device, fence, 0);
@@ -814,12 +814,25 @@ void VkForge_CmdCopyBufferToImage
 
 def CreateQueueSubmit(ctx: VkForgeContext):
     content = """\
-void VkForge_QueueSubmit(VkQueue queue, VkCommandBuffer cmdBuf, VkFence fence)
+void VkForge_QueueSubmit
+(
+    VkQueue queue,
+    VkCommandBuffer cmdBuf,
+    VkPipelineStageFlags waitStage,
+    VkSemaphore waitSemaphore,
+    VkSemaphore signalSemaphore,
+    VkFence fence
+)
 {{
     VkSubmitInfo submitInfo = {{0}};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &cmdBuf;
+    submitInfo.pWaitDstStageMask = waitStage;
+    submitInfo.pWaitSemaphores = waitSemaphore ? &waitSemaphore : 0;
+    submitInfo.pSignalSemaphores = signalSemaphore ? &signalSemaphore : 0;
+    submitInfo.waitSemaphoreCount = waitSemaphore ? 1 : 0;
+    submitInfo.signalSemaphoreCount = signalSemaphore ? 1 : 0;
 
     VkResult result = vkQueueSubmit(queue, 1, &submitInfo, fence);
 
@@ -1064,6 +1077,161 @@ void VkForge_BindImageMemory(VkDevice device, VkImage image, VkDeviceMemory memo
 """
     return content.format()
 
+def CreateDestroyBufferAlloc(ctx: VkForgeContext):
+    content = """\
+void VkForge_DestroyBufferAlloc(VkDevice device, VkForgeBufferAlloc bufferAlloc)
+{{
+    vkDestroyBuffer(device, bufferAlloc.buffer, 0);
+    vkFreeMemory(device, bufferAlloc.memory, 0);
+}}
+"""
+    return content.format()
+
+def CreateDestroyBufferAlloc(ctx: VkForgeContext):
+    content = """\
+void VkForge_DestroyBufferAlloc(VkDevice device, VkForgeBufferAlloc bufferAlloc)
+{{
+    vkDestroyBuffer(device, bufferAlloc.buffer, 0);
+    vkFreeMemory(device, bufferAlloc.memory, 0);
+}}
+"""
+    return content.format()
+
+def CreateDestroyImageAlloc(ctx: VkForgeContext):
+    content = """\
+void VkForge_DestroyImageAlloc(VkDevice device, VkForgeImageAlloc imageAlloc)
+{{
+    vkDestroyImage(device, imageAlloc.image, 0);
+    vkFreeMemory(device, imageAlloc.memory, 0);
+}}
+"""
+    return content.format()
+
+def CreateSetColor(ctx: VkForgeContext):
+    content = """\
+void VkForge_SetColor(const char* hex, float alpha, float color[4])
+{{
+    // Skip '#' if present
+    if (hex[0] == '#') {{
+        hex++;
+    }}
+
+    // Must be exactly 6 hex digits
+    if (strlen(hex) != 6)
+    {{
+        SDL_LogError(0, "Invalid hex color: %%s\\n", hex);
+        exit(1);
+    }}
+
+    // Extract pairs
+    char rs[3] = {{ hex[0], hex[1], '\\0' }};
+    char gs[3] = {{ hex[2], hex[3], '\\0' }};
+    char bs[3] = {{ hex[4], hex[5], '\\0' }};
+
+    // Convert hex to int
+    int r = (int)strtol(rs, NULL, 16);
+    int g = (int)strtol(gs, NULL, 16);
+    int b = (int)strtol(bs, NULL, 16);
+
+    // Normalize to [0, 1]
+    color[0] = r / 255.0f;
+    color[1] = g / 255.0f;
+    color[2] = b / 255.0f;
+    color[3] = alpha > 1.0 ? 1 : alpha;
+}}
+"""
+    return content.format()
+
+def CreateBeginRendering(ctx: VkForgeContext):
+    content = """\
+void VkForge_CmdBeginRendering
+(
+    VkCommandBuffer cmdbuf,
+    VkImageView     imgView,
+    const char*     clearColorHex,
+    float           x,
+    float           y,
+    float           w,
+    float           h
+)
+{{
+    VkRenderingAttachmentInfo colorAttachment = {{0}};
+    colorAttachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    colorAttachment.imageView                 = imgView;
+    colorAttachment.imageLayout               = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    colorAttachment.loadOp                    = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
+
+    VkClearValue clearVal       = {{0}};
+    clearVal.depthStencil.depth = 1.0f;
+    VkForge_SetColor(clearColorHex, 1.0f, clearVal.color.float32);
+    colorAttachment.clearValue = clearVal;
+
+    VkRenderingInfo renderingInfo          = {{0}};
+    renderingInfo.sType                    = VK_STRUCTURE_TYPE_RENDERING_INFO;
+    renderingInfo.renderArea.offset.x      = x;
+    renderingInfo.renderArea.offset.y      = y;
+    renderingInfo.renderArea.extent.width  = w;
+    renderingInfo.renderArea.extent.height = h;
+    renderingInfo.layerCount               = 1;
+    renderingInfo.colorAttachmentCount     = 1;
+    renderingInfo.pColorAttachments        = &colorAttachment;
+
+    vkCmdBeginRendering(cmdbuf, &renderingInfo);
+}}
+"""
+    return content.format()
+
+def CreateEndRendering(ctx: VkForgeContext):
+    content = """\
+void VkForge_CmdEndRendering(VkCommandBuffer cmdbuf, VkImage image)
+{{
+    vkCmdEndRendering(cmdbuf);
+
+    VkForge_CmdImageBarrier
+    (
+        cmdbuf,
+        image,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+        0,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
+    );
+}}
+"""
+    return content.format()
+
+def CreateQueuePresent(ctx: VkForgeContext):
+    content = """\
+void VkForge_QueuePresent
+(
+    VkQueue queue,
+    VkSwapchainKHR swapchain,
+    uint32_t index,
+    VkSemaphore waitSemaphore
+)
+{{
+    VkPresentInfoKHR presentInfo = {{0}};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = &swapchain;
+    presentInfo.pImageIndices = &index;
+    presentInfo.pWaitSemaphores = &waitSemaphore;
+    presentInfo.waitSemaphoreCount = 1;
+
+    VkResult result = vkQueuePresentKHR(queue, &presentInfo);
+
+    if( VK_SUCCESS != result )
+    {{
+        SDL_LogError(0, "Failed to Present Queue.");
+        exit(1);
+    }}
+}}
+"""
+    return content.format()
+
 def GetUtilStrings(ctx: VkForgeContext):
     return [
         CreateDebugMsgInfo(ctx),
@@ -1094,7 +1262,12 @@ def GetUtilStrings(ctx: VkForgeContext):
         CreateTexture(ctx),
         CreateAllocDeviceMemory(ctx),
         CreateBindBufferMemory(ctx),
-        CreateBindImageMemory(ctx)
-        
-        
+        CreateBindImageMemory(ctx),
+        CreateDestroyBufferAlloc(ctx),
+        CreateDestroyImageAlloc(ctx),
+        CreateSetColor(ctx),
+        CreateBeginRendering(ctx),
+        CreateEndRendering(ctx),
+        CreateQueuePresent(ctx),
+
     ]

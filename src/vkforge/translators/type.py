@@ -19,8 +19,6 @@ struct {name}
     VkImage*         swapchain_images;
     VkImageView*     swapchain_imgviews;
     VkCommandPool    cmdpool;
-    VkCommandBuffer  cmdbuf_copy;
-    VkCommandBuffer  cmdbuf_draw;
 }};
 """
     output = content.format(name=TYPE_NAME.CORE)
@@ -129,6 +127,50 @@ struct VkForgeTexture
 """
     return content.format()
 
+def CreateRender(ctx: VkForgeContext):
+    content = """\
+typedef enum VkForgeRenderStatus VkForgeRenderStatus;
+
+enum VkForgeRenderStatus
+{{
+    VKFORGE_RENDER_READY,
+    VKFORGE_RENDER_COPYING,
+    VKFORGE_RENDER_ACQING_IMG,
+    VKFORGE_RENDER_PENGING_ACQ_IMG,
+    VKFORGE_RENDER_DRAWING,
+    VKFORGE_RENDER_SUBMITTING,
+    VKFORGE_RENDER_PENDING_SUBMIT,
+}};
+
+typedef struct VkForgeRender VkForgeRender;
+typedef void (*VkForgeRenderCallback)(VkForgeRender render);
+
+struct VkForgeRender
+{{
+    VkPhysicalDevice      physical_device;
+    VkSurfaceKHR          surface;
+    VkDevice              device;
+    VkQueue               queue;
+    VkCommandPool         cmdPool;
+    VkExtent2D            extent;
+    VkCommandBuffer       copyCmdBuf;
+    VkCommandBuffer       drawCmdBuf;
+    VkForgeRenderCallback copyCallback;
+    VkForgeRenderCallback drawCallback;
+    VkSwapchainKHR        swapchain;
+    VkImage*              images;
+    VkImageView*          imgviews;
+    uint32_t              index;
+    VkFence               acquireImageFence;
+    VkFence               submitQueueFence;
+    VkSemaphore           copySemaphore;
+    VkSemaphore           drawSemaphore;
+    VkForgeRenderStatus   status;
+    void*                 userData;
+}};
+"""
+    return content.format()
+
 def GetTypeStrings(ctx: VkForgeContext):
     return [
         CreateMaxes(ctx),
@@ -136,6 +178,7 @@ def GetTypeStrings(ctx: VkForgeContext):
         CreateBufferAllocType(ctx),
         CreateImageAllocType(ctx),
         CreateLayout(ctx),
-        CreateTexture(ctx)
+        CreateTexture(ctx),
+        CreateRender(ctx)
         
     ]
