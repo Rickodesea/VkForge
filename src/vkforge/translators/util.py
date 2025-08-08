@@ -28,14 +28,14 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VkForge_DebugMsgCallback
 
     if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
     {{
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%%s %%s", typeStr, callback->pMessage);
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s %s", typeStr, callback->pMessage);
     }} else if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
     {{
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%%s %%s", typeStr, callback->pMessage);
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s %s", typeStr, callback->pMessage);
     }} else if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT ||
                severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
     {{
-        SDL_Log("%%s %%s", typeStr, callback->pMessage);
+        SDL_Log("%s %s", typeStr, callback->pMessage);
     }}
 
     return VK_FALSE;
@@ -211,12 +211,12 @@ def CreateSemaphore(ctx: VkForgeContext) -> str:
 VkSemaphore VkForge_CreateSemaphore(VkDevice device)
 {{
     VkSemaphoreCreateInfo createInfo = {{0}};
-    createInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
     VkSemaphore semaphore = VK_NULL_HANDLE;
     VkResult result;
 
-    result = vkCreateFence(device, &createInfo, 0, &semaphore);
+    result = vkCreateSemaphore(device, &createInfo, 0, &semaphore);
 
     if( VK_SUCCESS != result )
     {{
@@ -515,7 +515,7 @@ VkForgeImageAlloc VkForge_CreateImageAlloc
     allocation.image  = VkForge_CreateImage(device, width, height, format, usage, &memRequirements);
     allocation.memory = VkForge_AllocDeviceMemory(physical_device, device, memRequirements, properties);
     allocation.size   = memRequirements.size;
-    VkForge_BindBufferMemory(device, allocation.image, allocation.memory, 0);
+    VkForge_BindImageMemory(device, allocation.image, allocation.memory, 0);
 
     return allocation;
 }}
@@ -648,17 +648,17 @@ VkForgeTexture VkForge_CreateTexture
     SDL_Surface* surface = IMG_Load(filename);
     if (!surface) 
     {{
-        SDL_LogError(0, "Failed to load texture image: %%s", filename);
+        SDL_LogError(0, "Failed to load texture image: %s", filename);
         exit(1);
     }}
 
     if (SDL_BYTESPERPIXEL(surface->format) != 4) 
     {{
-        SDL_Surface* converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA8888);
+        SDL_Surface* converted = SDL_ConvertSurface(surface, SDL_PIXELFORMAT_RGBA8888);
         SDL_DestroySurface(surface);
         if (!converted) 
         {{
-            SDL_LogError(0, "Failed to convert surface format: %%s", filename);
+            SDL_LogError(0, "Failed to convert surface format: %s", filename);
             return texture;
         }}
         surface = converted;
@@ -732,7 +732,7 @@ VkForgeTexture VkForge_CreateTexture
     VkForge_EndCommandBuffer(commandBuffer);
 
     VkFence fence = VkForge_CreateFence(device);
-    VkForge_QueueSubmit(device, commandBuffer, 0, 0, 0, fence);
+    VkForge_QueueSubmit(queue, commandBuffer, 0, 0, 0, fence);
     vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
 
     vkDestroyFence(device, fence, 0);
@@ -828,7 +828,7 @@ void VkForge_QueueSubmit
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &cmdBuf;
-    submitInfo.pWaitDstStageMask = waitStage;
+    submitInfo.pWaitDstStageMask = &waitStage;
     submitInfo.pWaitSemaphores = waitSemaphore ? &waitSemaphore : 0;
     submitInfo.pSignalSemaphores = signalSemaphore ? &signalSemaphore : 0;
     submitInfo.waitSemaphoreCount = waitSemaphore ? 1 : 0;
@@ -945,7 +945,7 @@ VkBuffer VkForge_CreateBuffer
     bufferInfo.usage       = usage;
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    VkResult result = vkCreateBuffer(device, &bufferInfo, 0, &buffer);
+    result = vkCreateBuffer(device, &bufferInfo, 0, &buffer);
     if (VK_SUCCESS != result)
     {{
         SDL_LogError(0, "Failed to create buffer");
@@ -1004,7 +1004,7 @@ VkImage VkForge_CreateImage
     if( inMemReqs )
     {{
         VkMemoryRequirements memRequirements = {{0}};
-        vkGetBufferMemoryRequirements(device, image, &memRequirements);
+        vkGetImageMemoryRequirements(device, image, &memRequirements);
         *inMemReqs = memRequirements;
     }}
 
@@ -1066,7 +1066,7 @@ def CreateBindImageMemory(ctx: VkForgeContext):
     content = """\
 void VkForge_BindImageMemory(VkDevice device, VkImage image, VkDeviceMemory memory, VkDeviceSize offset)
 {{
-    VkResult result = vkBindBufferMemory(device, image, memory, offset);
+    VkResult result = vkBindImageMemory(device, image, memory, offset);
 
     if (VK_SUCCESS != result)
     {{
@@ -1119,7 +1119,7 @@ void VkForge_SetColor(const char* hex, float alpha, float color[4])
     // Must be exactly 6 hex digits
     if (strlen(hex) != 6)
     {{
-        SDL_LogError(0, "Invalid hex color: %%s\\n", hex);
+        SDL_LogError(0, "Invalid hex color: %s\\n", hex);
         exit(1);
     }}
 
@@ -1232,6 +1232,75 @@ void VkForge_QueuePresent
 """
     return content.format()
 
+def CreateReadFile(ctx: VkForgeContext):
+    content = """\
+void* VkForge_ReadFile(const char* filePath, Sint64* inSize)
+{{
+    SDL_IOStream* io = SDL_IOFromFile(filePath, "rb");
+    if(!io)
+    {{
+        SDL_LogError(0, "Failed to read %s: %s", filePath, SDL_GetError());
+        exit(1);
+    }}
+
+    const Sint64 size = SDL_GetIOSize(io);
+    if(size < 0)
+    {{
+        SDL_LogError(0, "Size of %s is %d", filePath, size);
+        exit(1);
+    }}
+
+    size_t buffer_size = size ? ((size_t)size % 4 + (size_t)size) : 4;
+
+    if (inSize) {{
+        *inSize = (Sint64)buffer_size;
+    }}
+
+    void* buffer = SDL_malloc(buffer_size);
+    SDL_memset(buffer, 0, buffer_size);
+    assert(buffer);
+
+    size_t read_size = SDL_ReadIO(io, buffer, size);
+
+    if(read_size != size)
+    {{
+        SDL_LogWarn(0, "%s: requested %d, but read %d, returned: %d", filePath, size, read_size, buffer_size);
+    }}
+
+    SDL_CloseIO(io);
+
+    return buffer;
+}}
+"""
+    return content.format()
+
+def CreateCreateShaderModule(ctx: VkForgeContext):
+    content = """\
+VkShaderModule VkForge_CreateShaderModule(VkDevice device, const char* filePath)
+{{
+    VkShaderModule shadermod = VK_NULL_HANDLE;
+
+    Sint64 size = 0;
+    const char* buffer = VkForge_ReadFile(filePath, &size);
+
+    VkShaderModuleCreateInfo shadermod_create_info = {{0}};
+    shadermod_create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    shadermod_create_info.codeSize = size;
+    shadermod_create_info.pCode = (uint32_t*)buffer;
+
+    VkResult result = vkCreateShaderModule(device, &shadermod_create_info, 0, &shadermod);
+
+    if ( VK_SUCCESS != result )
+    {{
+        SDL_LogError(0, "Failed to Create Shader Module for %s", filePath);
+        exit(1);
+    }}
+
+    return shadermod;
+}}
+"""
+    return content.format()
+
 def GetUtilStrings(ctx: VkForgeContext):
     return [
         CreateDebugMsgInfo(ctx),
@@ -1269,5 +1338,7 @@ def GetUtilStrings(ctx: VkForgeContext):
         CreateBeginRendering(ctx),
         CreateEndRendering(ctx),
         CreateQueuePresent(ctx),
+        CreateReadFile(ctx),
+        CreateCreateShaderModule(ctx)
 
     ]

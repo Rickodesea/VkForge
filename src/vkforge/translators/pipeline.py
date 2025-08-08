@@ -1,6 +1,7 @@
 from vkforge.context import VkForgeContext
 from vkforge.mappings import *
 from vkforge.schema import VkPipelineModel
+from .func import extract_function_declarations
 
 def BuildShaderStage(
         ctx: VkForgeContext, 
@@ -462,7 +463,27 @@ def CreatePipelines(ctx: VkForgeContext):
     
     return pipelines
 
+def CreatePipelineDeclarations(ctx: VkForgeContext) -> str:
+    """Generate ONLY function forward declarations using robust regex parsing."""
+    declarations = "// Function Declarations\n\n"
+    
+    # Collect all content from all modules
+    all_content = []
+    all_content.extend([CreatePipelines(ctx)])
+    
+    # Process each content block
+    for content in all_content:
+        for decl in extract_function_declarations(content):
+            declarations += decl + "\n\n"
+    
+    return declarations
+
 def GetPipelineStrings(ctx: VkForgeContext):
     return [
-        CreatePipelines(ctx)
+        CreatePipelines(ctx),
+    ]
+
+def GetPipelineDeclarationStrings(ctx: VkForgeContext):
+    return [
+        CreatePipelineDeclarations(ctx)
     ]

@@ -1,29 +1,22 @@
-cmake_minimum_required(VERSION 3.14)
+VkShaderModule VkForge_CreateShaderModule(VkDevice device, const char* filePath) 
+{
+    VkShaderModule shadermod = VK_NULL_HANDLE;
 
-project(VKFORGE 
-    VERSION 0.5.0 
-    DESCRIPTION "Vulkan User-End API Implementation Generator" 
-    LANGUAGES C
-)
+    Sint64 size = 0;
+    const char* buffer = VkForge_ReadFile(filePath, &size);
 
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_STANDARD_REQUIRED TRUE)
+    VkShaderModuleCreateInfo shadermod_create_info = {0};
+    shadermod_create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    shadermod_create_info.codeSize = size;
+    shadermod_create_info.pCode = (uint32_t*)buffer;
 
-add_compile_definitions(
-    $<$<CONFIG:Debug>:DEBUG=1>
-    $<$<CONFIG:Release>:NDEBUG=1>
-)
+    VkResult result = vkCreateShaderModule(device, &shadermod_create_info, 0, &shadermod);
 
-add_library(vkforge_deps INTERFACE)
+    if ( VK_SUCCESS != result )
+    {
+        SDL_LogError(0, "Failed to Create Shader Module for %s", filePath);
+        exit(1);
+    }
 
-# SDL3 Configuration
-find_package(SDL3 REQUIRED)
-target_link_libraries(vkforge_deps INTERFACE SDL3::SDL3)
-
-# Vulkan Configuration
-find_package(Vulkan 1.3 REQUIRED)
-target_link_libraries(vkforge_deps INTERFACE Vulkan::Vulkan)
-
-add_library(vkforge SHARED
-    files
-)
+    return shadermod;
+}

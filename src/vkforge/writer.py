@@ -39,11 +39,11 @@ def Write_Plain_File(ctx: VkForgeContext, filename, stringFunc):
             print(f"GENERATED: {filepath}")
 
 
-def Write_C_Definition_Module(ctx: VkForgeContext, filename, stringFunc):
+def Write_C_Definition_Module(ctx: VkForgeContext, filename, stringFunc, additionalIncludes = []):
     content = """\
 {standard_includes}
 {type_include}
-{func_include}
+{func_include}{additionalIncludes}
 
 {user_defined_includes}
 {user_defined_insertions}
@@ -51,10 +51,16 @@ def Write_C_Definition_Module(ctx: VkForgeContext, filename, stringFunc):
 {code}
 
 """
+    if additionalIncludes:
+        additionalIncludes = "\n" + "\n".join([GetInclude(x) for x in additionalIncludes])
+    else:
+        additionalIncludes = ""
+
     output = content.format(
         standard_includes=IncludeStandardDefinitionHeaders(),
         type_include=TYPE_INCLUDE,
         func_include=FUNC_INCLUDE,
+        additionalIncludes=additionalIncludes,
         user_defined_includes=GetUserDefinedIncludes(ctx),
         user_defined_insertions=GetUserDefinedInsertions(ctx),
         code="\n".join(stringFunc(ctx)),
@@ -116,15 +122,21 @@ extern "C" {{
             f.write(output)
             print(f"GENERATED: {filepath}")
 
+def GetInclude(name:str)->str:
+    if "#include" in name:
+        return name
+    else:
+        if name.startswith('<') and name.endswith('>'):
+            return f"#include {name}"
+        else:
+            return f'#include "{name}"'
+
 def GetUserDefinedIncludes(ctx: VkForgeContext) -> str:
     if ctx.forgeModel.UserDefined:
         if ctx.forgeModel.UserDefined.includes:
             includes = []
             for header in ctx.forgeModel.UserDefined.includes:
-                if header.startswith('<') and header.endswith('>'):
-                    includes.append(f"#include {header}")
-                else:
-                    includes.append(f'#include "{header}"')
+                includes.append(GetInclude(header))
             
             return '\n'.join(includes) + '\n'
     return "/** NO USER INCLUDES **/"
@@ -138,9 +150,10 @@ def GetUserDefinedInsertions(ctx: VkForgeContext) -> str:
 
 def Generate(ctx: VkForgeContext):
     Write_C_Definition_Module(ctx, FILE.CORE, GetCoreStrings)
-    Write_C_Definition_Module(ctx, FILE.UTIL, GetUtilStrings)
-    Write_C_Definition_Module(ctx, FILE.LAYOUT, GetLayoutStrings)
+    Write_C_Definition_Module(ctx, FILE.UTIL, GetUtilStrings, additionalIncludes=["<SDL3_image/SDL_image.h>"])
+    Write_C_Definition_Module(ctx, FILE.LAYOUT, GetLayoutStrings, additionalIncludes=[FILE.PIPELINE_H])
     Write_C_Definition_Module(ctx, FILE.PIPELINE_C, GetPipelineStrings)
     Write_C_Declaration_Module(ctx, FILE.TYPE, GetTypeStrings)
     Write_C_Declaration_Module(ctx, FILE.FUNC, GetFuncStrings)
+    Write_C_Declaration_Module(ctx, FILE.PIPELINE_H, GetPipelineDeclarationStrings)
     Write_Plain_File(ctx, FILE.CMAKE, GetCMakeStrings)

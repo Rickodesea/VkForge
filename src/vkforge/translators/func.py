@@ -1,7 +1,6 @@
 from vkforge.context import VkForgeContext
 from vkforge.mappings import *
 from .core import GetCoreStrings
-from .pipeline import GetPipelineStrings
 from .util import GetUtilStrings
 from .layout import GetLayoutStrings
 import re
@@ -33,48 +32,44 @@ def CreateEnum(ctx: VkForgeContext) -> str:
     return output
 
 def extract_function_declarations(content: str) -> list[str]:
-    """Extract all function declarations using regex."""
-    # This pattern matches:
-    # 1. Return type (any valid C type with pointers/qualifiers)
-    # 2. Function name
-    # 3. Parameters (including varargs and function pointers)
-    # 4. Stops at opening brace (ignoring attributes)
+    """Extract all function declarations using regex, including pointer return types."""
+    # This pattern is stricter to avoid catastrophic backtracking.
+    # - Return type: sequences of identifiers/keywords + optional pointer stars/qualifiers
+    # - Stops before function name (group 2)
     pattern = r"""
-        ^\s*                          # Start of line with possible whitespace
-        (                             # Capture group 1: return type
-            (?:                       
-                [a-zA-Z_]\w*          # Basic type (int, char, etc.)
-                (?:\s*\*?\s*const)?   # Optional pointer/const qualifiers
-                \s+                   # Requires whitespace after type
-            )+
+        ^\s*
+        (                               # Group 1: return type
+            (?:[a-zA-Z_]\w*             # Identifier (type or qualifier)
+                (?:\s+[a-zA-Z_]\w*)*    # More identifiers (e.g., 'unsigned long')
+            )
+            (?:\s*\*+\s*(?:const\s*)?)* # Optional pointer stars with optional const
         )
-        ([a-zA-Z_]\w*)                # Capture group 2: function name
-        \s*                           # Optional whitespace
-        \(                            # Opening paren
-        ([^)]*)                       # Capture group 3: parameters
-        \)                            # Closing paren
-        \s*                           # Optional whitespace
-        (?:                           # Non-capturing group for attributes
-            \s*__attribute__\s*\(\([^)]*\)\)  
-        )*
-        \s*                           # Optional whitespace
-        (?={)                         # Lookahead for opening brace
+        \s+                             # Space between type and name
+        ([a-zA-Z_]\w*)                  # Group 2: function name
+        \s*
+        \(                              # Opening parenthesis
+        ([^)]*)                         # Group 3: parameters
+        \)                              # Closing parenthesis
+        \s*
+        (?:__attribute__\s*\(\([^)]*\)\)\s*)? # Optional attributes
+        (?={)                           # Lookahead for opening brace
     """
+
     functions = []
-    
     for match in re.finditer(pattern, content, re.VERBOSE | re.MULTILINE):
         return_type = match.group(1).strip()
         name = match.group(2).strip()
         params = match.group(3).strip()
 
-        if 'static ' in return_type:
+        if return_type.startswith("static "):
             continue
-        
-        # Reconstruct declaration
+
         decl = f"{return_type} {name}({params});"
         functions.append(decl)
-    
+
     return functions
+
+
 
 def CreateDeclarations(ctx: VkForgeContext) -> str:
     """Generate ONLY function forward declarations using robust regex parsing."""
@@ -84,7 +79,6 @@ def CreateDeclarations(ctx: VkForgeContext) -> str:
     all_content = []
     all_content.extend(GetCoreStrings(ctx))
     all_content.extend(GetUtilStrings(ctx))
-    all_content.extend(GetPipelineStrings(ctx))
     all_content.extend(GetLayoutStrings(ctx))
     
     # Process each content block

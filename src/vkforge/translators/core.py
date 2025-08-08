@@ -121,7 +121,7 @@ void VkForge_CreateSurface
 
     if( !SDL_Vulkan_CreateSurface(window, instance, 0, &surface) )
     {{
-        SDL_Log("Failed to Create Vulkan/SDL3 Surface: %%s", SDL_GetError());
+        SDL_Log("Failed to Create Vulkan/SDL3 Surface: %s", SDL_GetError());
         exit(1);
     }}
 
@@ -212,7 +212,7 @@ void VkForge_CreateDevice
 (
     VkPhysicalDevice       physical_device,
     uint32_t               queue_family_index,
-    const char*            requested_extensions_buffer,
+    const char**           requested_extensions_buffer,
     uint32_t               requested_extensions_count,
 
     VkDevice*              retDevice,
@@ -227,7 +227,7 @@ void VkForge_CreateDevice
     // Required extensions for the device: Requested by VkForge
     const char* intern_required_ext_buffer[] =
     {{
-        "VK_Swapchain_KHR"
+        "VK_KHR_swapchain"
     }};
 
     #define intern_required_ext_count (sizeof(intern_required_ext_buffer) / unit_size)
@@ -248,7 +248,7 @@ void VkForge_CreateDevice
         uint32_t user_limit = ext_limit - 128 -  intern_required_ext_count;
         if( requested_extensions_count > user_limit)
         {{
-            SDL_Log("VkForge does not support more than %%d requested Device extensions.", user_limit);
+            SDL_Log("VkForge does not support more than %d requested Device extensions.", user_limit);
             exit(1);
         }}
 
@@ -303,7 +303,7 @@ void VkForge_CreateDevice
 
         if(found == false)
         {{
-            SDL_Log("Requested extension, %%s, is missing!", req_ext_b[i]);
+            SDL_Log("Requested extension, %s, is missing!", req_ext_b[i]);
             missing_count ++;
         }}
     }}
@@ -378,8 +378,8 @@ void VkForge_CreateSwapchain
 
     VkSwapchainKHR*        retSwapchain,
     uint32_t*              retSwapchainSize,
-    VkImage*               retSwapchainImages,
-    VkImageView*           retSwapchainImageViews
+    VkImage**              retSwapchainImages,
+    VkImageView**          retSwapchainImageViews
 )
 {{
     assert(retSwapchain);
@@ -397,7 +397,7 @@ void VkForge_CreateSwapchain
     createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     createInfo.surface = surface;
     createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    createInfo.minImageCount = GetSwapchainSize(physical_device, surface, req_swapchain_size);
+    createInfo.minImageCount = VkForge_GetSwapchainSize(physical_device, surface, req_swapchain_size);
     createInfo.imageFormat = surface_format.format;
     createInfo.imageExtent = surface_cap.currentExtent;
     createInfo.imageArrayLayers = 1;
@@ -405,7 +405,7 @@ void VkForge_CreateSwapchain
     createInfo.imageColorSpace = surface_format.colorSpace;
     createInfo.preTransform = surface_cap.currentTransform;
     createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    createInfo.presentMode = GetPresentMode(physical_device, surface, req_present_mode);
+    createInfo.presentMode = VkForge_GetPresentMode(physical_device, surface, req_present_mode);
     createInfo.clipped = VK_TRUE;
 
     result = vkCreateSwapchainKHR(device, &createInfo, 0, &swapchain);
@@ -449,7 +449,7 @@ void VkForge_CreateSwapchain
 
         if(VK_SUCCESS != result)
         {{
-            SDL_LogError(0, "Failed to create Swapchain %%d image view", i);
+            SDL_LogError(0, "Failed to create Swapchain %d image view", i);
             exit(1);
         }}
     }}
@@ -538,7 +538,7 @@ VkForgeCore* VkForge_CreateCore
     VkFormat               req_format,
     uint32_t               req_swapchain_size,
     VkPresentModeKHR       req_present_mode,
-    const char*            requested_device_extensions_buffer,
+    const char**           requested_device_extensions_buffer,
     uint32_t               requested_device_extensions_count
 )
 {
@@ -660,7 +660,7 @@ void VkForge_DestroyCore(VkForgeCore* core)
 
 def CreateDestroy(ctx: VkForgeContext):
     content = """\
-void VkForge_Destroy(VkDevice device, uint32_t count, void (*destroyers[])(void))
+void VkForge_Destroy(VkDevice device, uint32_t count, VkForgeDestroyCallback* destroyers)
 {{
     vkDeviceWaitIdle(device);
     for (uint32_t i = 0; i < count; ++i) 
@@ -685,6 +685,7 @@ VkForgeRender* VkForge_CreateRender
     VkImageView*          swapchain_imgviews,
     VkForgeRenderCallback copyCallback,
     VkForgeRenderCallback drawCallback,
+    const char*           clearColorHex,
     void*                 userData
 )
 {{
@@ -704,6 +705,7 @@ VkForgeRender* VkForge_CreateRender
     render->imgviews        = swapchain_imgviews;
     render->copyCallback    = copyCallback;
     render->drawCallback    = drawCallback;
+    render->color           = clearColorHex;
     render->userData        = userData;
 
     render->acquireImageFence = VkForge_CreateFence(device);
@@ -754,7 +756,7 @@ def CreateDestroyRender(ctx: VkForgeContext):
     content = """\
 void VkForge_DestroyRender(VkForgeRender* r)
 {{
-    VkCommandBuffer cmdbufs[2] = {{r->copyCmdBuf, r->drawCallback}};
+    VkCommandBuffer cmdbufs[2] = {{r->copyCmdBuf, r->drawCmdBuf}};
     vkFreeCommandBuffers(r->device, r->cmdPool, 2, cmdbufs);
 
     vkDestroyFence(r->device, r->acquireImageFence, 0);
@@ -829,6 +831,8 @@ void VkForge_UpdateRender(VkForgeRender* render)
             VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
         );
 
+        VkForge_CmdBeginRendering(render->drawCmdBuf, swapView, render->color, 0, 0, render->extent.width, render->extent.height);
+
         render->drawCallback(*render);
 
         VkForge_CmdEndRendering(render->drawCmdBuf, swapImage);
@@ -879,5 +883,8 @@ def GetCoreStrings(ctx: VkForgeContext):
         CreateCreateCore(ctx),
         CreateDestroyCore(ctx),
         CreateDestroy(ctx),
-        CreateCreateRender(ctx)
+        CreateCreateRender(ctx),
+        CreateUpdateRender(ctx),
+        CreateRefreshRender(ctx),
+        CreateDestroyRender(ctx)
     ]

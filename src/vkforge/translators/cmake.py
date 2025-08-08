@@ -40,6 +40,10 @@ add_library(vkforge_deps INTERFACE)
 find_package(SDL3 REQUIRED)
 target_link_libraries(vkforge_deps INTERFACE SDL3::SDL3)
 
+# if SDL3_image CMAKE find doesn't work so you need to copy the libary into your app directory
+find_package(SDL3_image REQUIRED)
+target_link_libraries(vkforge_deps INTERFACE SDL3_image::SDL3_image)
+
 # Vulkan Configuration
 find_package(Vulkan 1.3 REQUIRED)
 target_link_libraries(vkforge_deps INTERFACE Vulkan::Vulkan)

@@ -26,7 +26,7 @@ def make_c_format_string(
         c_code = pattern.sub(replacer, c_code)
 
     # Escape the remaining special characters
-    escaped = c_code.replace("\\", "\\\\").replace("%", "%%").replace("{", "{{").replace("}", "}}")
+    escaped = c_code.replace("\\", "\\\\").replace("{", "{{").replace("}", "}}")
 
     # If we used FORMAT(name, value), re-insert the unescaped {name}
     if use_source_formatter:

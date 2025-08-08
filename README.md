@@ -34,6 +34,7 @@ Feel free to contribute by using it, reporting issues, making pull requests and 
 
 - [ ] Add support for Renderpass and earlier versions: Currently only support Vulkan >= 1.3 and Dynamic Rendering. 
 - [ ] Platform abstraction: Allow users to pass a flag `vkforge --platform SDL3` with options like `Raylib`, `GLFW`, etc. VkForge will generate the code specific for the platform you want.
+- [ ] Sub-Platform abstraction: I can combined SDL3 as my main platform and then use SDL3_image, stb_image, etc to load images and so on. `vkforge --platform-image SDL3_image`.
 - [ ] 3D utility functions: Utility functions specific for 3D rendering
 - [ ] Extended version utility functions: Extended utility functions provide additional parameters that allow the user to pass pNext and pAllocationCallbacks.
 

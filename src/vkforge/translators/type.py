@@ -161,9 +161,16 @@ struct VkForgeRender
     VkFence               submitQueueFence;
     VkSemaphore           copySemaphore;
     VkSemaphore           drawSemaphore;
+    const char*           color;
     VkForgeRenderStatus   status;
     void*                 userData;
 }};
+"""
+    return content.format()
+
+def CreateDestroyCallback(ctx: VkForgeContext):
+    content = """\
+typedef void (*VkForgeDestroyCallback)(void);
 """
     return content.format()
 
@@ -175,6 +182,7 @@ def GetTypeStrings(ctx: VkForgeContext):
         CreateImageAllocType(ctx),
         CreateLayout(ctx),
         CreateTexture(ctx),
-        CreateRender(ctx)
+        CreateRender(ctx),
+        CreateDestroyCallback(ctx)
         
     ]

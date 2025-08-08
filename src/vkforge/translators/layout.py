@@ -159,14 +159,14 @@ typedef struct VkForgeLayoutDescriptorSetLayoutDesign VkForgeLayoutDescriptorSet
 struct VkForgeLayoutDescriptorSetLayoutDesign
 {{
     uint32_t bind_design_count;
-    VkForgeLayoutBindDesign* bind_design_buffer;
+    VkForgeLayoutBindDesign** bind_design_buffer;
 }};
     
 typedef struct VkForgeLayoutPipelineLayoutDesign VkForgeLayoutPipelineLayoutDesign;
 struct VkForgeLayoutPipelineLayoutDesign
 {{
     uint32_t descriptorset_layout_design_count;
-    VkForgeLayoutDescriptorSetLayoutDesign* descriptorset_layout_design_buffer;
+    VkForgeLayoutDescriptorSetLayoutDesign** descriptorset_layout_design_buffer;
 }};
 
 typedef struct VkForgeLayoutReferenceDesign VkForgeLayoutReferenceDesign;
@@ -180,9 +180,9 @@ typedef struct VkForgeReferencedLayoutDesign VkForgeReferencedLayoutDesign;
 struct VkForgeReferencedLayoutDesign
 {{
     uint32_t pipeline_layout_design_count;
-    VkForgeLayoutPipelineLayoutDesign* pipeline_layout_design_buffer;
+    VkForgeLayoutPipelineLayoutDesign** pipeline_layout_design_buffer;
     uint32_t reference_count;
-    VkForgeLayoutReferenceDesign* reference_buffer;
+    VkForgeLayoutReferenceDesign** reference_buffer;
 }};
 
 {static_arrays}
@@ -384,7 +384,7 @@ struct VkForgePipelineFunction
 
 {static_pipeline_functions}
 
-static VkForgePipelineFunction* VKFORGE_PIPELINE_FUNCTIONS = PIPELINE_FUNCTIONS;
+static VkForgePipelineFunction** VKFORGE_PIPELINE_FUNCTIONS = PIPELINE_FUNCTIONS;
 static uint32_t VKFORGE_PIPELINE_FUNCTION_COUNT = {pipeline_count};
 """
     if ctx.forgeModel.Pipeline:
@@ -479,9 +479,9 @@ static const VkForgePipelineFunction* FindPipelineFunction(const char* pipeline_
 {{
     for (uint32_t i = 0; i < VKFORGE_PIPELINE_FUNCTION_COUNT; i++)
     {{
-        if (strcmp(pipeline_name, VKFORGE_PIPELINE_FUNCTIONS[i].pipeline_name) == 0)
+        if (strcmp(pipeline_name, VKFORGE_PIPELINE_FUNCTIONS[i]->pipeline_name) == 0)
         {{
-            return &VKFORGE_PIPELINE_FUNCTIONS[i];
+            return VKFORGE_PIPELINE_FUNCTIONS[i];
         }}
     }}
     return NULL;
@@ -495,9 +495,9 @@ static uint32_t FindPipelineLayoutIndex(const char* pipeline_name)
 {{
     for (uint32_t i = 0; i < VKFORGE_REFERENCED_LAYOUT_DESIGN.reference_count; i++)
     {{
-        if (strcmp(pipeline_name, VKFORGE_REFERENCED_LAYOUT_DESIGN.reference_buffer[i].pipeline_name) == 0)
+        if (strcmp(pipeline_name, VKFORGE_REFERENCED_LAYOUT_DESIGN.reference_buffer[i]->pipeline_name) == 0)
         {{
-            return VKFORGE_REFERENCED_LAYOUT_DESIGN.reference_buffer[i].pipeline_layout_design_index;
+            return VKFORGE_REFERENCED_LAYOUT_DESIGN.reference_buffer[i]->pipeline_layout_design_index;
         }}
     }}
     return UINT32_MAX;
@@ -538,7 +538,7 @@ static VkResult CreateDescriptorSetLayoutBindings(
 
     for (uint32_t j = 0; j < set_design->bind_design_count; j++)
     {{
-        const VkForgeLayoutBindDesign* bind = &set_design->bind_design_buffer[j];
+        const VkForgeLayoutBindDesign* bind = set_design->bind_design_buffer[j];
         bindings[j] = (VkDescriptorSetLayoutBinding){{
             .binding = j,
             .descriptorType = bind ? bind->type : 0,
@@ -601,7 +601,7 @@ static VkResult CreatePipelineLayout(
     for (uint32_t i = 0; i < pipeline_design->descriptorset_layout_design_count; i++)
     {{
         const VkForgeLayoutDescriptorSetLayoutDesign* set_design = 
-            &pipeline_design->descriptorset_layout_design_buffer[i];
+            pipeline_design->descriptorset_layout_design_buffer[i];
         
         VkResult result = CreateDescriptorSetLayout(layout->device, set_design, &setLayouts[i]);
         if (result != VK_SUCCESS)
@@ -663,14 +663,14 @@ VkResult VkForge_CreatePipeline(VkForgeLayout* layout, const char* pipeline_name
     const VkForgePipelineFunction* pipeline_func = FindPipelineFunction(pipeline_name);
     if (!pipeline_func)
     {{
-        SDL_LogError(0, "Pipeline creation function not found for %%s", pipeline_name);
+        SDL_LogError(0, "Pipeline creation function not found for %s", pipeline_name);
         return VK_ERROR_UNKNOWN;
     }}
 
     if (pipeline_func->pipeline_index < layout->pipeline_count && 
         layout->pipeline_buffer[pipeline_func->pipeline_index] != VK_NULL_HANDLE)
     {{
-        SDL_Log("Pipeline %%s already exists", pipeline_name);
+        SDL_Log("Pipeline %s already exists", pipeline_name);
         return VK_SUCCESS;
     }}
 
@@ -678,7 +678,7 @@ VkResult VkForge_CreatePipeline(VkForgeLayout* layout, const char* pipeline_name
     uint32_t layout_index = FindPipelineLayoutIndex(pipeline_name);
     if (layout_index == UINT32_MAX)
     {{
-        SDL_LogError(0, "Pipeline layout not found for %%s", pipeline_name);
+        SDL_LogError(0, "Pipeline layout not found for %s", pipeline_name);
         return VK_ERROR_UNKNOWN;
     }}
 
@@ -686,7 +686,7 @@ VkResult VkForge_CreatePipeline(VkForgeLayout* layout, const char* pipeline_name
     if (layout->pipeline_layout_count <= layout_index)
     {{
         const VkForgeLayoutPipelineLayoutDesign* pipeline_design = 
-            &VKFORGE_REFERENCED_LAYOUT_DESIGN.pipeline_layout_design_buffer[layout_index];
+            VKFORGE_REFERENCED_LAYOUT_DESIGN.pipeline_layout_design_buffer[layout_index];
         
         VkResult result = CreatePipelineLayout(layout, pipeline_design, layout_index);
         if (result != VK_SUCCESS)
@@ -705,7 +705,7 @@ VkResult VkForge_CreatePipeline(VkForgeLayout* layout, const char* pipeline_name
 
     if (pipeline == VK_NULL_HANDLE)
     {{
-        SDL_LogError(0, "Failed to create pipeline %%s", pipeline_name);
+        SDL_LogError(0, "Failed to create pipeline %s", pipeline_name);
         return VK_ERROR_UNKNOWN;
     }}
 
@@ -737,7 +737,7 @@ void VkForge_BindPipeline(VkForgeLayout* layout, const char* pipeline_name, VkCo
     const VkForgePipelineFunction* pipeline_func = FindPipelineFunction(pipeline_name);
     if (!pipeline_func)
     {{
-        SDL_LogError(0, "Pipeline %%s not found", pipeline_name);
+        SDL_LogError(0, "Pipeline %s not found", pipeline_name);
         return;
     }}
 
@@ -752,7 +752,7 @@ void VkForge_BindPipeline(VkForgeLayout* layout, const char* pipeline_name, VkCo
         return;
     }}
 
-    SDL_LogError(0, "Pipeline %%s not created", pipeline_name);
+    SDL_LogError(0, "Pipeline %s not created", pipeline_name);
 }}
 """
     return content.format()

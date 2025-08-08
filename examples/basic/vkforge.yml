@@ -8,6 +8,9 @@ UserDefined:
   - typedef struct Vertex Vertex;
   - struct Vertex { float x, y, w, h; };
 
+GenerateOnce:
+- CMakeLists.txt
+
 InstanceCreateInfo:
   useValidationFeatureEnableBestPracticesEXT: false
 
