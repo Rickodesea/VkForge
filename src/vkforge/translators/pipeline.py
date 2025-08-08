@@ -295,12 +295,12 @@ def BuildRasterizationState(
     
     state += "\t" * indent + "VkPipelineRasterizationStateCreateInfo rasterizerInfo = {0};\n"
     state += "\t" * indent + "rasterizerInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;\n"
-    state += "\t" * indent + f"rasterizerInfo.depthClampEnable = {'VK_TRUE' if raster.depthClampEnable else 'VK_FALSE'};\n"
-    state += "\t" * indent + f"rasterizerInfo.rasterizerDiscardEnable = {'VK_TRUE' if raster.rasterizerDiscardEnable else 'VK_FALSE'};\n"
+    state += "\t" * indent + f"rasterizerInfo.depthClampEnable = {map_bool(raster.depthClampEnable)};\n"
+    state += "\t" * indent + f"rasterizerInfo.rasterizerDiscardEnable = {map_bool(raster.rasterizerDiscardEnable)};\n"
     state += "\t" * indent + f"rasterizerInfo.polygonMode = {raster.polygonMode};\n"
     state += "\t" * indent + f"rasterizerInfo.cullMode = {raster.cullMode};\n"
     state += "\t" * indent + f"rasterizerInfo.frontFace = {raster.frontFace};\n"
-    state += "\t" * indent + f"rasterizerInfo.depthBiasEnable = {'VK_TRUE' if raster.depthBiasEnable else 'VK_FALSE'};\n"
+    state += "\t" * indent + f"rasterizerInfo.depthBiasEnable = {map_bool(raster.depthBiasEnable)};\n"
     state += "\t" * indent + f"rasterizerInfo.depthBiasConstantFactor = {raster.depthBiasConstantFactor};\n"
     state += "\t" * indent + f"rasterizerInfo.depthBiasClamp = {raster.depthBiasClamp};\n"
     state += "\t" * indent + f"rasterizerInfo.depthBiasSlopeFactor = {raster.depthBiasSlopeFactor};\n"
@@ -321,7 +321,7 @@ def BuildColorBlendAttachment(
     blend = pipelineModule.ColorBlendAttachmentState
     
     state += "\t" * indent + "VkPipelineColorBlendAttachmentState colorBlendAttachment = {0};\n"
-    state += "\t" * indent + f"colorBlendAttachment.blendEnable = {blend.blendEnable};\n"
+    state += "\t" * indent + f"colorBlendAttachment.blendEnable = {map_bool(blend.blendEnable)};\n"
     state += "\t" * indent + f"colorBlendAttachment.srcColorBlendFactor = {blend.srcColorBlendFactor};\n"
     state += "\t" * indent + f"colorBlendAttachment.dstColorBlendFactor = {blend.dstColorBlendFactor};\n"
     state += "\t" * indent + f"colorBlendAttachment.colorBlendOp = {blend.colorBlendOp};\n"
@@ -343,7 +343,7 @@ def BuildColorBlendState(
     
     state += "\t" * indent + "VkPipelineColorBlendStateCreateInfo colorBlending = {0};\n"
     state += "\t" * indent + "colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;\n"
-    state += "\t" * indent + f"colorBlending.logicOpEnable = {blend.logicOpEnable};\n"
+    state += "\t" * indent + f"colorBlending.logicOpEnable = {map_bool(blend.logicOpEnable)};\n"
     state += "\t" * indent + "colorBlending.attachmentCount = 1;\n"
     state += "\t" * indent + "colorBlending.pAttachments = &colorBlendAttachment;\n"
     
@@ -363,11 +363,11 @@ def BuildDepthStencilState(
     
     state += "\t" * indent + "VkPipelineDepthStencilStateCreateInfo depthStencil = {0};\n"
     state += "\t" * indent + "depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;\n"
-    state += "\t" * indent + f"depthStencil.depthTestEnable = {depth.depthTestEnable};\n"
-    state += "\t" * indent + f"depthStencil.depthWriteEnable = {depth.depthWriteEnable};\n"
+    state += "\t" * indent + f"depthStencil.depthTestEnable = {map_bool(depth.depthTestEnable)};\n"
+    state += "\t" * indent + f"depthStencil.depthWriteEnable = {map_bool(depth.depthWriteEnable)};\n"
     state += "\t" * indent + f"depthStencil.depthCompareOp = {depth.depthCompareOp};\n"
-    state += "\t" * indent + f"depthStencil.depthBoundsTestEnable = {depth.depthBoundsTestEnable};\n"
-    state += "\t" * indent + f"depthStencil.stencilTestEnable = {depth.stencilTestEnable};\n"
+    state += "\t" * indent + f"depthStencil.depthBoundsTestEnable = {map_bool(depth.depthBoundsTestEnable)};\n"
+    state += "\t" * indent + f"depthStencil.stencilTestEnable = {map_bool(depth.stencilTestEnable)};\n"
     
     return state
 

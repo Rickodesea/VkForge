@@ -119,7 +119,15 @@ def main():
         layout
     )
 
-    print(json.dumps(deep_serialize(context), indent=4))
+    genFile = ".VkForgeGeneration"
+    filepath = Path(context.buildDir) / genFile
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(filepath, "w") as f:
+        f.write(json.dumps(deep_serialize(context), indent=4))
+        print(f"GENERATED: {filepath}")
+
+    
 
     Generate(context)
 

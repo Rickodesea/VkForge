@@ -17,6 +17,11 @@ def map_dict(mapping: dict, key: str, subkey: str) -> Any:
             return dict_value[subkey]
     raise ValueError(f"No value found for {key}.{subkey} in map dict")
 
+def map_bool(key:bool)->str:
+    if key:
+        return "VK_TRUE"
+    return "VK_FALSE"
+
 
 ############################################
 # Maps

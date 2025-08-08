@@ -51,7 +51,7 @@ class UserDefinedModel(BaseModel):
 class VkInstanceCreateInfoModel(BaseModel):
     
     useValidationFeatureEnableBestPracticesEXT: Optional[bool] = Field(
-        default="VK_FALSE",
+        default=False,
         description="Set to True to enable VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT"
     )
 
@@ -295,13 +295,13 @@ class VkPipelineRasterizationStateCreateInfoModel(BaseModel):
         default=1.0, description="Width of rasterized line."
     )
     depthClampEnable: Optional[bool] = Field(
-        default="VK_FALSE", description="Enables depth clamping."
+        default=False, description="Enables depth clamping."
     )
     rasterizerDiscardEnable: Optional[bool] = Field(
-        default="VK_FALSE", description="Discard primitives before rasterization."
+        default=False, description="Discard primitives before rasterization."
     )
     depthBiasEnable: Optional[bool] = Field(
-        default="VK_FALSE", description="Enable depth bias during rasterization."
+        default=False, description="Enable depth bias during rasterization."
     )
     depthBiasConstantFactor: Optional[float] = Field(
         default=0, description="Constant depth bias factor."
@@ -319,7 +319,7 @@ class VkPipelineMultisampleStateCreateInfoModel(BaseModel):
         description="Number of samples used for rasterization"
     )
     sampleShadingEnable: Optional[bool] = Field(
-        default="VK_FALSE",
+        default=False,
         description="Enable sample shading"
     )
     minSampleShading: Optional[float] = Field(
@@ -331,17 +331,17 @@ class VkPipelineMultisampleStateCreateInfoModel(BaseModel):
         description="Array of sample masks"
     )
     alphaToCoverageEnable: Optional[bool] = Field(
-        default="VK_FALSE",
+        default=False,
         description="Enable alpha to coverage"
     )
     alphaToOneEnable: Optional[bool] = Field(
-        default="VK_FALSE",
+        default=False,
         description="Enable alpha to one"
     )
 
 class VkPipelineColorBlendAttachmentStateModel(BaseModel):
     blendEnable: Optional[bool] = Field(
-        default="VK_TRUE",
+        default=True,
         description="Enable blending"
     )
     srcColorBlendFactor: Optional[str] = Field(
@@ -375,7 +375,7 @@ class VkPipelineColorBlendAttachmentStateModel(BaseModel):
 
 class VkPipelineColorBlendStateCreateInfoModel(BaseModel):
     logicOpEnable: Optional[bool] = Field(
-        default="VK_FALSE",
+        default=False,
         description="Enable logical operation"
     )
     logicOp: Optional[str] = Field(
@@ -393,11 +393,11 @@ class VkPipelineColorBlendStateCreateInfoModel(BaseModel):
 
 class VkPipelineDepthStencilStateCreateInfoModel(BaseModel):
     depthTestEnable: Optional[bool] = Field(
-        default="VK_FALSE",
+        default=False,
         description="Enable depth testing"
     )
     depthWriteEnable: Optional[bool] = Field(
-        default="VK_FALSE",
+        default=False,
         description="Enable depth writes"
     )
     depthCompareOp: Optional[str] = Field(
@@ -405,11 +405,11 @@ class VkPipelineDepthStencilStateCreateInfoModel(BaseModel):
         description="Depth comparison operator"
     )
     depthBoundsTestEnable: Optional[bool] = Field(
-        default="VK_FALSE",
+        default=False,
         description="Enable depth bounds test"
     )
     stencilTestEnable: Optional[bool] = Field(
-        default="VK_FALSE",
+        default=False,
         description="Enable stencil testing"
     )
     front: Optional[dict] = Field(
