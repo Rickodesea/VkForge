@@ -42,8 +42,8 @@ Feel free to contribute by using it, reporting issues, making pull requests and 
 
 ## Connections
 
-* [VkForge Python Package](https://pypi.org/project/vkforge/)
-* [VkForge Github](https://github.com/Rickodesea/VkForge)
+* [VkForge Python Package](https://pypi.org/project/vkforge/) - Check out for stable release
+* [VkForge Github](https://github.com/Rickodesea/VkForge) - Check out for latest release and updates
 
 ---
 
