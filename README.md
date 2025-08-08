@@ -25,16 +25,17 @@ The input for VkForge is:
 
 VkForge generates **C99 source code** for your Vulkan implementation.  
 Platform integration is done via **SDL3**.
-Other frameworks and languages will be supported in the future — see [CONTRIBUTING.md](CONTRIBUTING.md).
+We are hoping to improve VkForge — see [CONTRIBUTING.md](CONTRIBUTING.md).
+Feel free to contribute by using it, reporting issues, making pull requests and via othe produtive ways!
 
 ---
 
 ## Todo
 
-- [] Add support for Renderpass and earlier versions: Currently only support Vulkan >= 1.3 and Dynamic Rendering. 
-- [] Platform abstraction: Allow users to pass a flag `vkforge --platform SDL3` with options like `Raylib`, `GLFW`, etc. VkForge will generate the code specific for the platform you want.
-- [] 3D utility functions: Utility functions specific for 3D rendering
-- [] Extended version utility functions: Extended utility functions provide additional parameters that allow the user to pass pNext and pAllocationCallbacks.
+- [ ] Add support for Renderpass and earlier versions: Currently only support Vulkan >= 1.3 and Dynamic Rendering. 
+- [ ] Platform abstraction: Allow users to pass a flag `vkforge --platform SDL3` with options like `Raylib`, `GLFW`, etc. VkForge will generate the code specific for the platform you want.
+- [ ] 3D utility functions: Utility functions specific for 3D rendering
+- [ ] Extended version utility functions: Extended utility functions provide additional parameters that allow the user to pass pNext and pAllocationCallbacks.
 
 ---
 
