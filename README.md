@@ -260,7 +260,7 @@ vkforge -h
 ```
 
 ```bash
-vkforge examples/basic/vkforge.yml --source-dir build/source/basic --build-dir build --config-roots examples/basic --remove-validations
+vkforge examples/basic/vkforge.yml --source-dir build/source/basic --build-dir build --config-roots examples/basic
 ```
 
 See [REFERENCE](REFERENCE.md) for more details.
@@ -269,6 +269,7 @@ See [REFERENCE](REFERENCE.md) for more details.
 
 ## Todo
 
+- [ ] Add support for push constants.
 - [ ] Add support for subpass inputs.
 - [ ] Add support for Renderpass and earlier versions: Currently only support Vulkan >= 1.3 and Dynamic Rendering. 
 - [ ] Platform abstraction: Allow users to pass a flag `vkforge --platform SDL3` with options like `Raylib`, `GLFW`, etc. VkForge will generate the code specific for the platform you want.
