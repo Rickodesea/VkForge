@@ -39,6 +39,13 @@ Feel free to contribute by using it, reporting issues, making pull requests and 
 
 ---
 
+## Connections
+
+[VkForge Python Package](https://pypi.org/project/vkforge/)
+[VkForge Github](https://github.com/Rickodesea/VkForge)
+
+---
+
 ## Purpose
 
 Vulkan is extremely detailed — this is a good thing!  
