@@ -183,12 +183,79 @@ int main()
 }
 ```
 
+Here is a sample config that is combined with the shaders to provide info to generate your pipelines and layouts.
+
+```yml
+ID: VkForge 0.5 # required identifier
+
+UserDefined: # optional
+  includes: # you can add your custom includes to VkForge generated code
+  - <stdlib.h>
+  insertions: # you can add your custom code to VkForge generated code
+  - extern int MY_VAL;
+  - typedef struct Vertex Vertex;
+  - struct Vertex { float x, y, w, h; };
+
+GenerateOnce:
+- CMakeLists.txt # stop VkForge from regenerating specific files
+
+InstanceCreateInfo: # optional
+  useValidationFeatureEnableBestPracticesEXT: true 
+
+DebugUtilsMessengerCreateInfoEXT: # optional
+  messageSeverity:  #specify severity, etc
+  - info
+  messageType:
+  - general
+
+DeviceCreateInfo: # optional
+  PhysicalDeviceFeatures:
+    geometryShader: true
+
+Pipeline: # requires atleast 1 pipeline
+  - name: MyPipeline # all pipeline must have a name
+    ShaderModule: # must have vert and frag shaders. can add more types
+      - path: vert.vert 
+      - path: frag.frag
+    VertexInputBindingDescription: # each item in list is a vertex buffer binding
+      - stride: Vertex # stride can be type (in this case your custom type)
+        first_location: 0 # you must specify the first location of this binding (you shader can have many locations so VkForge need to know which location belong to which binding)
+        members: # optionally you can specify members
+        - x # each member is used as an offset in offset specification
+        - y # if you dont provide members, VkForge will calculate this automatically for you
+        - w # assuming tightly packed.
+        - z
+  - name: Default
+    ShaderModule:
+      - path: default.vert
+      - path: default.frag
+    VertexInputBindingDescription:
+      - stride: sizeof(long)
+        first_location: 0
+  - name: Mix
+    ShaderModule:
+      - path: default.vert # you can have any combination of shaders per pipeline
+      - path: frag.frag
+    VertexInputBindingDescription:
+      - stride: sizeof(long) # size of is allowed
+        first_location: 0
+  - name: Different # You can have any number of pipelines
+    ShaderModule:
+      - path: different.vert 
+      - path: different.frag
+    VertexInputBindingDescription:
+      - stride: 42 # numbers is allowed
+        first_location: 0
+
+```
+
 See [REFERENCE](REFERENCE.md) for more details.
 
 ---
 
 ## Todo
 
+- [ ] Add support for subpass inputs.
 - [ ] Add support for Renderpass and earlier versions: Currently only support Vulkan >= 1.3 and Dynamic Rendering. 
 - [ ] Platform abstraction: Allow users to pass a flag `vkforge --platform SDL3` with options like `Raylib`, `GLFW`, etc. VkForge will generate the code specific for the platform you want.
 - [ ] Sub-Platform abstraction: I can combined SDL3 as my main platform and then use SDL3_image, stb_image, etc to load images and so on. `vkforge --platform-image SDL3_image`.
