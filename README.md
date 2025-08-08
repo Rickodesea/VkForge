@@ -30,6 +30,163 @@ Feel free to contribute by using it, reporting issues, making pull requests and 
 
 ---
 
+## Generated Code
+
+The generated C code is split into:
+- core : the core vulkan objects
+- utils: the utility vulkan functions
+- pipelines: the generated pipelines based on your shaders
+- layout: the generated layouts based on your shaders
+- header files with type and function declarations
+
+Example Implementation:
+```c
+#include <SDL3/SDL.h>
+#include "vkforge_typedecls.h"
+#include "vkforge_funcdecls.h"
+
+#define UPDATE_TICKS (1000 / 120)
+#define DRAW_TICKS   (1000 / 60)
+
+static void CopyCallback(VkForgeRender render) {
+}
+
+static void DrawCallback(VkForgeRender render) {
+}
+
+int main()
+{
+    if(!SDL_Init(SDL_INIT_VIDEO))
+    {
+        SDL_Log("[SDL] Failed to initialize: %s", SDL_GetError());
+        exit(1);
+    }
+
+    SDL_Window* window = SDL_CreateWindow("VKFORGE", 400, 400, SDL_WINDOW_VULKAN);
+    if(!window)
+    {
+        SDL_Log("[SDL] Failed to create window: %s", SDL_GetError());
+        SDL_Quit();
+        exit(1);
+    }
+
+    VkForgeCore* core = VkForge_CreateCore(
+        window,
+        VK_FORMAT_B8G8R8A8_UNORM,
+        2,                         // Double buffering
+        VK_PRESENT_MODE_FIFO_KHR,  // VSync enabled
+        0, // Extensions requested - VkForge already request the basic required ones
+        0
+    );
+
+    if(!core)
+    {
+        SDL_Log("[Vulkan] Failed to create core");
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        exit(1);
+    }
+
+    /// VkForge Special Layout Feature
+    /// It design your layout automatically based on all combination of your shaders.
+    /// You can also create your pipelines from it.
+    /// You name your pipeline in your config file.
+    VkForgeLayout* layout = VkForge_CreateLayout(core); 
+    if(!layout || VkForge_CreatePipeline(layout, "MyPipeline") != VK_SUCCESS)
+    {
+        SDL_Log("[Vulkan] Failed to setup pipeline");
+        if(layout) VkForge_DestroyLayout(layout);
+        VkForge_DestroyCore(core);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        exit(1);
+    }
+
+    /// VkForge Special Render Feature
+    /// Manages sync for you in the fastest possible way!
+    /// Manages the swapchain and dynamic rendering and clear screen.
+    /// You insert your custom logic via the callbacks.
+    VkForgeRender* render = VkForge_CreateRender(
+        core->physical_device,
+        core->surface,
+        core->device,
+        core->queue,
+        core->cmdpool,
+        core->swapchain,
+        core->swapchain_images,
+        core->swapchain_imgviews,
+        CopyCallback,
+        DrawCallback,
+        "F9CB99", //Clear screen color. Just copy and past from sites like https://colorhunt.co/
+        layout    // Pass any data here and your callbacks will have access. In this case we pass
+                  // VkForge special layout as user data.
+    );
+
+    if(!render)
+    {
+        SDL_Log("[Vulkan] Failed to create renderer");
+        VkForge_DestroyLayout(layout);
+        VkForge_DestroyCore(core);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        exit(1);
+    }
+
+    bool running = true;
+    Uint64 current_ticks;
+    Uint64 u_previous_ticks = SDL_GetTicks();
+    Uint64 d_previous_ticks = u_previous_ticks;
+    Uint64 u_accumulate_ticks = 0;
+    Uint64 d_accumulate_ticks = 0;
+
+    while(running)
+    {
+        SDL_Event event;
+        while(SDL_PollEvent(&event))
+        {
+            if(event.type == SDL_EVENT_QUIT)
+                running = false;
+        }
+
+        current_ticks = SDL_GetTicks();
+        Sint64 u_elapsed_ticks = current_ticks - u_previous_ticks + u_accumulate_ticks;
+        Sint64 d_elapsed_ticks = current_ticks - d_previous_ticks + d_accumulate_ticks;
+
+        if(u_elapsed_ticks >= UPDATE_TICKS)
+        {
+            u_accumulate_ticks = u_elapsed_ticks - UPDATE_TICKS;
+            u_previous_ticks = current_ticks;            
+            //You game logic here
+            //Ex: Move player left by 200 pixels, etc
+        }
+
+        if(d_elapsed_ticks >= DRAW_TICKS)
+        {
+            d_accumulate_ticks = d_elapsed_ticks - DRAW_TICKS;
+            d_previous_ticks = current_ticks;
+
+            // You update any buffer that will be copied in the copyCallback here.
+
+            VkForge_UpdateRender(render); //This function handles everything including rendering.
+        }
+    }
+
+    // Cleanup
+    vkDeviceWaitIdle(core->device);
+    VkForge_DestroyRender(render);
+    VkForge_DestroyLayout(layout);
+    VkForge_DestroyCore(core);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+
+    return 0;
+}
+```
+
+See [REFERENCE](REFERENCE.md) for more details.
+
+---
+
 ## Todo
 
 - [ ] Add support for Renderpass and earlier versions: Currently only support Vulkan >= 1.3 and Dynamic Rendering. 

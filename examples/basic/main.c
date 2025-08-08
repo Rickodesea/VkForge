@@ -5,20 +5,25 @@
 #define UPDATE_TICKS (1000 / 120)
 #define DRAW_TICKS   (1000 / 60)
 
+/// See REFERENCE.md for Code Reference
+///
+
 // Simple render callbacks
 static void CopyCallback(VkForgeRender render) {
     // Copy operations (like uploading textures) would go here
+    // 
 }
 
 static void DrawCallback(VkForgeRender render) {
+    // Draw Operations
     // Get the layout from user data
     //VkForgeLayout* layout = (VkForgeLayout*)render.userData;
     
     // Bind pipeline
-    //VkForge_BindPipeline(layout, "MyPipeline", render.drawCmdBuf);
+    // Ex: VkForge_BindPipeline(layout, "MyPipeline", render.drawCmdBuf);
     
     // Actual drawing commands would go here
-    // (This is where you'd draw your objects)
+    // Ex: vkCmdBindVertexBuffer(...)
 }
 
 int main()
