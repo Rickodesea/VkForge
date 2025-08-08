@@ -1,28 +1,29 @@
-void VkForge_QueueSubmit
-(
-    VkQueue queue, 
-    VkCommandBuffer cmdBuf,
-    VkPipelineStageFlags waitStage,
-    VkSemaphore waitSemaphore,
-    VkSemaphore signalSemaphore,
-    VkFence fence
+cmake_minimum_required(VERSION 3.14)
+
+project(VKFORGE 
+    VERSION 0.5.0 
+    DESCRIPTION "Vulkan User-End API Implementation Generator" 
+    LANGUAGES C
 )
-{
-    VkSubmitInfo submitInfo = {0};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &cmdBuf;
-    submitInfo.pWaitDstStageMask = waitStage;
-    submitInfo.pWaitSemaphores = waitSemaphore ? &waitSemaphore : 0;
-    submitInfo.pSignalSemaphores = signalSemaphore ? &signalSemaphore : 0;
-    submitInfo.waitSemaphoreCount = waitSemaphore ? 1 : 0;
-    submitInfo.signalSemaphoreCount = signalSemaphore ? 1 : 0;
 
-    VkResult result = vkQueueSubmit(queue, 1, &submitInfo, fence);
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED TRUE)
 
-    if( VK_SUCCESS != result )
-    {
-        SDL_LogError(0, "Failed to Queue Submit");
-        exit(1);
-    }
-}
+add_compile_definitions(
+    $<$<CONFIG:Debug>:DEBUG=1>
+    $<$<CONFIG:Release>:NDEBUG=1>
+)
+
+add_library(vkforge_deps INTERFACE)
+
+# SDL3 Configuration
+find_package(SDL3 REQUIRED)
+target_link_libraries(vkforge_deps INTERFACE SDL3::SDL3)
+
+# Vulkan Configuration
+find_package(Vulkan 1.3 REQUIRED)
+target_link_libraries(vkforge_deps INTERFACE Vulkan::Vulkan)
+
+add_library(vkforge SHARED
+    files
+)

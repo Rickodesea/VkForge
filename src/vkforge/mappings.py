@@ -234,42 +234,6 @@ class StringEnum(str, Enum):
     def __format__(self, format_spec):
         return format(self.value, format_spec)
 
-"""class FUNC_NAME(StringEnum):
-    DEBUG_CALLBACK = "VkForge_DebugMsgCallback"
-    DEBUG_INFO = "VkForge_GetDebugUtilsMessengerCreateInfo"
-    SCORE = "VkForge_ScorePhysicalDeviceLimits"
-    SELECT = "VkForge_SelectPhysicalDevice"
-    SEMAPHORE = "VkForge_CreateSemaphore"
-    FENCE = "VkForge_CreateFence"
-    DEVICE = "VkForge_CreateDevice"
-    COMMAND_BUFFERS = "VkForge_CreateCommandBuffers"
-    CACHE = "VkForge_GetCache"
-    IMAGE_BARRIER = "VkForge_CmdImageBarrier"
-    BUFFER_BARRIER = "VkForge_CmdBufferBarrier"
-    SURFACE = "VkForge_CreateSurface"
-    SURFACE_FORMAT = "VkForge_GetSurfaceFormat"
-    SURFACE_CAP = "VkForge_GetSurfaceCapabilities"
-    SWAPCHAIN = "VkForge_CreateSwapchain"
-    SWAPCHAIN_SIZE = "VkForge_GetSwapchainSize"
-    PRESENT_MODE = "VkForge_GetPresentMode"
-    MEMORY_TYPE = "VkForge_GetMemoryTypeIndex"
-    ENUM = "VKFORGE_ENUM"
-    VOID_ENUM = "VKFORGE_VOID_ENUM"
-    INSTANCE = "VkForge_CreateInstance"
-    SHADER = "VkForge_CreateShaderModule"
-"""
-
-class TYPE_NAME(StringEnum):
-    CORE = "VkForgeCore"
-    LAYOUT = "VkForgeLayout"
-    BUFFERALLOC = "VkForgeBufferAlloc"
-    IMAGEALLOC = "VkForgeImageAlloc"
-    MAX_PIPELINES = "VKFORGE_MAX_PIPELINES"
-    MAX_DESCRIPTORSET_LAYOUTS = "VKFORGE_MAX_DESCRIPTORSET_LAYOUTS"
-    MAX_PIPELINE_LAYOUTS = "VKFORGE_MAX_PIPELINE_LAYOUTS"
-    MAX_DESCRIPTOR_BINDINGS = "VKFORGE_MAX_DESCRIPTOR_BINDINGS"
-
-
 class SHADER(StringEnum):
     MODE      = "mode"
     ENTRYNAME = "entryname"

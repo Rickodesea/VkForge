@@ -4,6 +4,7 @@ from .pipeline import GetPipelineStrings
 from .type import GetTypeStrings
 from .layout import GetLayoutStrings
 from .func import GetFuncStrings
+from .cmake import GetCMakeStrings
 
 __all__ = [
     "GetCoreStrings",
@@ -11,5 +12,6 @@ __all__ = [
     "GetPipelineStrings",
     "GetTypeStrings",
     "GetLayoutStrings",
-    "GetFuncStrings"
+    "GetFuncStrings",
+    "GetCMakeStrings"
 ]

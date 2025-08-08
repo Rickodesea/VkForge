@@ -4,9 +4,9 @@ from vkforge.mappings import *
 
 def CreateCore(ctx: VkForgeContext) -> str:
     content = """\
-typedef struct {name} {name};
+typedef struct VkForgeCore VkForgeCore;
 
-struct {name}
+struct VkForgeCore
 {{
     VkInstance       instance;
     VkSurfaceKHR     surface;
@@ -21,46 +21,46 @@ struct {name}
     VkCommandPool    cmdpool;
 }};
 """
-    output = content.format(name=TYPE_NAME.CORE)
+    output = content.format()
 
     return output
 
 
 def CreateBufferAllocType(ctx: VkForgeContext) -> str:
     content = """\
-typedef struct {name} {name};
+typedef struct VkForgeBufferAlloc VkForgeBufferAlloc;
 
-struct {name}
+struct VkForgeBufferAlloc
 {{
     VkBuffer       buffer;
     VkDeviceSize   size;
     VkDeviceMemory memory;
 }};
 """
-    output = content.format(name=TYPE_NAME.BUFFERALLOC)
+    output = content.format()
 
     return output
 
 def CreateImageAllocType(ctx: VkForgeContext) -> str:
     content = """\
-typedef struct {name} {name};
+typedef struct VkForgeImageAlloc VkForgeImageAlloc;
 
-struct {name}
+struct VkForgeImageAlloc
 {{
     VkImage        image;
     VkDeviceSize   size;
     VkDeviceMemory memory;
 }};
 """
-    output = content.format(name=TYPE_NAME.IMAGEALLOC)
+    output = content.format()
 
     return output
 
 def CreateLayout(ctx: VkForgeContext) -> str:
     content = """\
-typedef struct {name} {name};
+typedef struct VkForgeLayout VkForgeLayout;
 """
-    output = content.format(name=TYPE_NAME.LAYOUT)
+    output = content.format()
 
     return output
 
@@ -91,19 +91,15 @@ def GetMaxDescriptorBindings(ctx: VkForgeContext):
 
 def CreateMaxes(ctx: VkForgeContext) -> str:
     content = """\
-#define {max_pipelines} {max_pipelines_value}
-#define {max_pipeline_layouts} {max_pipeline_layouts_value}
-#define {max_descriptorset_layouts} {max_descriptorset_layouts_value}
-#define {max_descriptor_bindings} {max_descriptor_bindings_value}
+#define VKFORGE_MAX_PIPELINES {max_pipelines_value}
+#define VKFORGE_MAX_PIPELINE_LAYOUTS {max_pipeline_layouts_value}
+#define VKFORGE_MAX_DESCRIPTORSET_LAYOUTS {max_descriptorset_layouts_value}
+#define VKFORGE_MAX_DESCRIPTOR_BINDINGS {max_descriptor_bindings_value}
 """
     output = content.format(
-        max_pipelines=TYPE_NAME.MAX_PIPELINES,
         max_pipelines_value=GetMaxPipelines(ctx),
-        max_pipeline_layouts=TYPE_NAME.MAX_PIPELINE_LAYOUTS,
         max_pipeline_layouts_value=GetMaxPipelineLayouts(ctx),
-        max_descriptorset_layouts=TYPE_NAME.MAX_DESCRIPTORSET_LAYOUTS,
         max_descriptorset_layouts_value=GetMaxDescriptorSetLayouts(ctx),
-        max_descriptor_bindings=TYPE_NAME.MAX_DESCRIPTOR_BINDINGS,
         max_descriptor_bindings_value=GetMaxDescriptorBindings(ctx)
     )
 

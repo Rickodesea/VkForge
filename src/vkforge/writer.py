@@ -21,8 +21,22 @@ def IncludeStandardDeclarationHeaders():
 #include <SDL3/SDL.h>
 """
 
-def WriteCMakeLists(ctx: VkForgeContext):
-    pass
+def Write_Plain_File(ctx: VkForgeContext, filename, stringFunc):
+    output = "\n".join(stringFunc(ctx))
+
+    filepath = Path(ctx.sourceDir) / filename
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+
+    if (
+        ctx.forgeModel.GenerateOnce 
+        and filename in ctx.forgeModel.GenerateOnce 
+        and filepath.exists()
+    ):
+        print(f"SKIPPED (GenerateOnce): {filepath}")
+    else:
+        with open(filepath, "w") as f:
+            f.write(output)
+            print(f"GENERATED: {filepath}")
 
 
 def Write_C_Definition_Module(ctx: VkForgeContext, filename, stringFunc):
@@ -49,9 +63,16 @@ def Write_C_Definition_Module(ctx: VkForgeContext, filename, stringFunc):
     filepath = Path(ctx.sourceDir) / filename
     filepath.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(filepath, "w") as f:
-        f.write(output)
-        print(f"GENERATED: {filepath}")
+    if (
+        ctx.forgeModel.GenerateOnce 
+        and filename in ctx.forgeModel.GenerateOnce 
+        and filepath.exists()
+    ):
+        print(f"SKIPPED (GenerateOnce): {filepath}")
+    else:
+        with open(filepath, "w") as f:
+            f.write(output)
+            print(f"GENERATED: {filepath}")
 
 
 def Write_C_Declaration_Module(ctx: VkForgeContext, filename, stringFunc):
@@ -84,9 +105,16 @@ extern "C" {{
     filepath = Path(ctx.sourceDir) / filename
     filepath.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(filepath, "w") as f:
-        f.write(output)
-        print(f"GENERATED: {filepath}")
+    if (
+        ctx.forgeModel.GenerateOnce 
+        and filename in ctx.forgeModel.GenerateOnce 
+        and filepath.exists()
+    ):
+        print(f"SKIPPED (GenerateOnce): {filepath}")
+    else:
+        with open(filepath, "w") as f:
+            f.write(output)
+            print(f"GENERATED: {filepath}")
 
 def GetUserDefinedIncludes(ctx: VkForgeContext) -> str:
     if ctx.forgeModel.UserDefined:
@@ -115,3 +143,4 @@ def Generate(ctx: VkForgeContext):
     Write_C_Definition_Module(ctx, FILE.PIPELINE_C, GetPipelineStrings)
     Write_C_Declaration_Module(ctx, FILE.TYPE, GetTypeStrings)
     Write_C_Declaration_Module(ctx, FILE.FUNC, GetFuncStrings)
+    Write_Plain_File(ctx, FILE.CMAKE, GetCMakeStrings)

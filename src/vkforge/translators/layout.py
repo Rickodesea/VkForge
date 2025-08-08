@@ -350,25 +350,20 @@ def GetStaticSubComponents(layouts, references):
 def CreateForgeLayout(ctx: VkForgeContext) -> str:
     """Create the layout structure definition"""
     content = """\
-struct {name}
+struct VkForgeLayout
 {{
     VkDevice              device;
     uint8_t               pipeline_count;
-    VkPipeline            pipeline_buffer[{max_pipelines}];
+    VkPipeline            pipeline_buffer[VKFORGE_MAX_PIPELINES];
     uint8_t               descriptorset_count;
-    VkDescriptorSet       descriptorset_buffer[{max_descriptorset_layouts}];
+    VkDescriptorSet       descriptorset_buffer[VKFORGE_MAX_DESCRIPTORSET_LAYOUTS];
     uint8_t               pipeline_layout_count;
-    VkPipelineLayout      pipeline_layout_buffer[{max_pipeline_layouts}];
+    VkPipelineLayout      pipeline_layout_buffer[VKFORGE_MAX_PIPELINE_LAYOUTS];
     uint8_t               descriptorset_layout_count;
-    VkDescriptorSetLayout descriptorset_layout_buffer[{max_descriptorset_layouts}];
+    VkDescriptorSetLayout descriptorset_layout_buffer[VKFORGE_MAX_DESCRIPTORSET_LAYOUTS];
 }};
 """
-    output = content.format(
-        name=TYPE_NAME.LAYOUT,
-        max_pipelines=TYPE_NAME.MAX_PIPELINES,
-        max_descriptorset_layouts=TYPE_NAME.MAX_DESCRIPTORSET_LAYOUTS,
-        max_pipeline_layouts=TYPE_NAME.MAX_PIPELINE_LAYOUTS
-    )
+    output = content.format()
     return output
 
 def CreatePipelineFunctionStruct(ctx: VkForgeContext) -> str:
