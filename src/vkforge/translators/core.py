@@ -848,7 +848,7 @@ void VkForge_UpdateRender(VkForgeRender* render)
         VkForge_QueueSubmit
         (
             render->queue,
-            render->copyCmdBuf,
+            render->drawCmdBuf,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
             render->copySemaphore,
             render->drawSemaphore,

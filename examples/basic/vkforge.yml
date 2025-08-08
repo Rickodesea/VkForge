@@ -12,7 +12,7 @@ GenerateOnce:
 - CMakeLists.txt
 
 InstanceCreateInfo:
-  useValidationFeatureEnableBestPracticesEXT: false
+  useValidationFeatureEnableBestPracticesEXT: true
 
 DebugUtilsMessengerCreateInfoEXT:
   messageSeverity: 
