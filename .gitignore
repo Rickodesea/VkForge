@@ -84,5 +84,8 @@ build/
 # Node
 node_modules/
 
+# Distribution
+dist/
+
 
 
