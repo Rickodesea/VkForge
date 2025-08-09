@@ -373,6 +373,7 @@ void VkForge_CreateSwapchain
     VkPhysicalDevice       physical_device,
     VkSurfaceKHR           surface,
     VkDevice               device,
+    VkSwapchainKHR         old_swapchain,
     VkFormat               req_format,
     uint32_t               req_swapchain_size,
     VkPresentModeKHR       req_present_mode,
@@ -384,9 +385,9 @@ void VkForge_CreateSwapchain
 )
 {{
     assert(retSwapchain);
-    assert(retSwapchainSize);
-    assert(retSwapchainImages);
-    assert(retSwapchainImageViews);
+    assert(retSwapchainSize);       //Must contain the number of images for old swapchain if old_swapchain is not null
+    assert(retSwapchainImages);     //Must contain images for old swapchain if old_swapchain is not null
+    assert(retSwapchainImageViews); //Must contain views for old swapchain if old_swapchain is not null
 
     VkResult result;
     VkSwapchainKHR swapchain = VK_NULL_HANDLE;
@@ -408,6 +409,7 @@ void VkForge_CreateSwapchain
     createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     createInfo.presentMode = VkForge_GetPresentMode(physical_device, surface, req_present_mode);
     createInfo.clipped = VK_TRUE;
+    createInfo.oldSwapchain = old_swapchain;
 
     result = vkCreateSwapchainKHR(device, &createInfo, 0, &swapchain);
 
@@ -426,9 +428,33 @@ void VkForge_CreateSwapchain
         swapchain
     );
 
-    VkImage* swapchain_images = SDL_malloc(sizeof(VkImage) * images_count);
-    VkImageView* swapchain_image_views = SDL_malloc(sizeof(VkImageView) * images_count);
-    uint32_t swapchain_size = images_count;
+    VkImage* swapchain_images;
+    VkImageView* swapchain_image_views;
+    uint32_t swapchain_size;
+
+    if( old_swapchain )
+    {{
+        swapchain_images      = *retSwapchainImages;     //re-use allocated vars, freed when old_swapchain is freed
+        swapchain_image_views = *retSwapchainImageViews; //re-use allocated vars, need to free old resources
+        swapchain_size        = *retSwapchainSize;       //old_swapchain size
+
+        // Free Old Resources
+        for( uint32_t i = 0; i < swapchain_size; i++ )
+        {{
+            vkDestroyImageView(device, swapchain_image_views[i], 0);
+        }}
+
+        vkDestroySwapchainKHR(device, old_swapchain, 0);
+
+        // Set new swapchain size
+        swapchain_size = images_count;
+    }}
+    else
+    {{
+        swapchain_images      = SDL_malloc(sizeof(VkImage) * images_count);
+        swapchain_image_views = SDL_malloc(sizeof(VkImageView) * images_count);
+        swapchain_size        = images_count;
+    }}
 
     SDL_memcpy(swapchain_images, images_buffer, images_count * sizeof(VkImage));
 
@@ -536,31 +562,28 @@ def CreateCreateCore(ctx: VkForgeContext) -> str:
 VkForgeCore* VkForge_CreateCore
 (
     SDL_Window*            window,
-    VkFormat               req_format,
-    uint32_t               req_swapchain_size,
-    VkPresentModeKHR       req_present_mode,
     const char**           requested_device_extensions_buffer,
     uint32_t               requested_device_extensions_count
 )
-{
+{{
     VkForgeCore* core = (VkForgeCore*)SDL_malloc(sizeof(VkForgeCore));
     if ( !core )
-    {
+    {{
         SDL_LogError(0, "Failed to allocate memory for VkForgeCore");
         exit(1);
-    }
+    }}
 
     SDL_memset(core, 0, sizeof(VkForgeCore));
 
     // Create Vulkan instance
     VkForge_CreateInstance(&core->instance);
-    
+
     // Create surface
     VkForge_CreateSurface(core->instance, window, &core->surface);
-    
+
     // Select physical device and queue family
     VkForge_SelectPhysicalDevice(core->instance, core->surface, &core->physical_device, &core->queue_family_index);
-    
+
     // Create logical device
     VkForge_CreateDevice(
         core->physical_device,
@@ -570,21 +593,7 @@ VkForgeCore* VkForge_CreateCore
         &core->device,
         &core->queue
     );
-    
-    // Create swapchain
-    VkForge_CreateSwapchain(
-        core->physical_device,
-        core->surface,
-        core->device,
-        req_format,
-        req_swapchain_size,
-        req_present_mode,
-        &core->swapchain,
-        &core->swapchain_size,
-        &core->swapchain_images,
-        &core->swapchain_imgviews
-    );
-    
+
     // Create command buffers
     VkForge_CreateCommandPoolAndBuffers(
         core->queue_family_index,
@@ -595,69 +604,46 @@ VkForgeCore* VkForge_CreateCore
     );
 
     return core;
-}
+}}
 """
-    return content
+    return content.format()
 
 def CreateDestroyCore(ctx: VkForgeContext) -> str:
     content = """\
 void VkForge_DestroyCore(VkForgeCore* core)
-{
+{{
     if (!core) return;
-    
-   // Destroy command pool (automatically frees command buffers)
+
+    vkDeviceWaitIdle(core->device);
+
+    // Destroy command pool (automatically frees command buffers)
     if (core->cmdpool)
-    {
+    {{
         vkDestroyCommandPool(core->device, core->cmdpool, 0);
-    }
-
-    // Destroy swapchain image views
-    if (core->swapchain_imgviews)
-    {
-        for (uint32_t i = 0; i < core->swapchain_size; i++)
-        {
-            if (core->swapchain_imgviews[i])
-            {
-                vkDestroyImageView(core->device, core->swapchain_imgviews[i], 0);
-            }
-        }
-        SDL_free(core->swapchain_imgviews);
-    }
-
-    // Free swapchain images array (images are owned by swapchain)
-    if (core->swapchain_images)
-    {
-        SDL_free(core->swapchain_images);
-    }
-
-    // Destroy swapchain
-    if (core->swapchain)
-    {
-        vkDestroySwapchainKHR(core->device, core->swapchain, 0);
-    }
+    }}
 
     // Destroy device
     if (core->device)
-    {
+    {{
         vkDestroyDevice(core->device, 0);
-    }
+    }}
 
     // Destroy surface
     if (core->surface)
-    {
+    {{
         vkDestroySurfaceKHR(core->instance, core->surface, 0);
-    }
+    }}
 
     // Destroy instance
     if (core->instance)
-    {
+    {{
         vkDestroyInstance(core->instance, 0);
-    }
+    }}
 
     SDL_free(core);
-}
+}}
 """
-    return content
+    return content.format()
 
 def CreateDestroy(ctx: VkForgeContext):
     content = """\
@@ -676,38 +662,62 @@ def CreateCreateRender(ctx: VkForgeContext):
     content = """\
 VkForgeRender* VkForge_CreateRender
 (
+    SDL_Window*           window,
     VkPhysicalDevice      physical_device,
     VkSurfaceKHR          surface,
     VkDevice              device,
     VkQueue               queue,
     VkCommandPool         cmdPool,
-    VkSwapchainKHR        swapchain,
-    VkImage*              swapchain_images,
-    VkImageView*          swapchain_imgviews,
+    VkFormat              req_format,
+    uint32_t              req_swapchain_size,
+    VkPresentModeKHR      req_present_mode,
     VkForgeRenderCallback copyCallback,
     VkForgeRenderCallback drawCallback,
     const char*           clearColorHex,
     void*                 userData
 )
 {{
+    assert(physical_device);
+    assert(surface);
+    assert(device);
+    assert(queue);
+    assert(cmdPool);
+    assert(req_swapchain_size);
     assert(copyCallback);
     assert(drawCallback);
+
+    if( VK_FORMAT_UNDEFINED == req_format ) req_format = VK_FORMAT_B8G8R8A8_UNORM;
 
     VkForgeRender* render = SDL_malloc(sizeof(VkForgeRender));
     SDL_memset(render, 0, sizeof(VkForgeRender));
 
-    render->physical_device = physical_device;
-    render->surface         = surface;
-    render->device          = device;
-    render->queue           = queue;
-    render->cmdPool         = cmdPool;
-    render->swapchain       = swapchain;
-    render->images          = swapchain_images;
-    render->imgviews        = swapchain_imgviews;
-    render->copyCallback    = copyCallback;
-    render->drawCallback    = drawCallback;
-    render->color           = clearColorHex;
-    render->userData        = userData;
+    render->window             = window;
+    render->physical_device    = physical_device;
+    render->surface            = surface;
+    render->device             = device;
+    render->queue              = queue;
+    render->cmdPool            = cmdPool;
+    render->req_format         = req_format;
+    render->req_swapchain_size = req_swapchain_size;
+    render->req_present_mode   = req_present_mode;
+    render->copyCallback       = copyCallback;
+    render->drawCallback       = drawCallback;
+    render->color              = clearColorHex;
+    render->userData           = userData;
+
+    VkForge_CreateSwapchain(
+        physical_device,
+        surface,
+        device,
+        0,
+        req_format,
+        req_swapchain_size,
+        req_present_mode,
+        &render->swapchain,
+        &render->swapchain_size,
+        &render->swapchain_images,
+        &render->swapchain_imgviews
+    );
 
     render->acquireImageFence = VkForge_CreateFence(device);
     render->submitQueueFence  = VkForge_CreateFence(device);
@@ -753,10 +763,56 @@ void VkForge_RefreshRenderData(VkForgeRender* r)
 """
     return content.format()
 
+def CreateReCreateRenderSwapchain(ctx: VkForgeContext):
+    content = """\
+void VkForge_ReCreateRenderSwapchain(VkForgeRender* r)
+{{
+    VkForge_CreateSwapchain(
+        r->physical_device,
+        r->surface,
+        r->device,
+        r->swapchain,
+        r->req_format,
+        r->req_swapchain_size,
+        r->req_present_mode,
+        &r->swapchain,
+        &r->swapchain_size,
+        &r->swapchain_images,
+        &r->swapchain_imgviews
+    );
+}}
+"""
+    return content.format()
+
 def CreateDestroyRender(ctx: VkForgeContext):
     content = """\
 void VkForge_DestroyRender(VkForgeRender* r)
 {{
+    // Destroy swapchain image views
+    if (r->swapchain_imgviews)
+    {{
+        for (uint32_t i = 0; i < r->swapchain_size; i++)
+        {{
+            if (r->swapchain_imgviews[i])
+            {{
+                vkDestroyImageView(r->device, r->swapchain_imgviews[i], 0);
+            }}
+        }}
+        SDL_free(r->swapchain_imgviews);
+    }}
+
+    // Free swapchain images array (images are owned by swapchain)
+    if (r->swapchain_images)
+    {{
+        SDL_free(r->swapchain_images);
+    }}
+
+    // Destroy swapchain
+    if (r->swapchain)
+    {{
+        vkDestroySwapchainKHR(r->device, r->swapchain, 0);
+    }}
+
     VkCommandBuffer cmdbufs[2] = {{r->copyCmdBuf, r->drawCmdBuf}};
     vkFreeCommandBuffers(r->device, r->cmdPool, 2, cmdbufs);
 
@@ -772,6 +828,7 @@ void VkForge_DestroyRender(VkForgeRender* r)
 
 def CreateUpdateRender(ctx: VkForgeContext):
     content = """\
+int counter = 0;
 void VkForge_UpdateRender(VkForgeRender* render)
 {{
     if( VKFORGE_RENDER_READY == render->status )
@@ -802,6 +859,21 @@ void VkForge_UpdateRender(VkForgeRender* render)
             &render->index
         );
 
+        if( VK_SUCCESS == result )
+        {{
+            render->acquireSuccessful = true;
+        }}
+        else if( VK_SUBOPTIMAL_KHR == result || VK_ERROR_OUT_OF_DATE_KHR == result )
+        {{
+            SDL_LogError(0, "Failed to Acquire Image due to %s. The swapchain will be re-created.", VkForge_StringifyResult(result));
+            render->acquireSuccessful = false;
+        }}
+        else
+        {{
+            SDL_LogError(0, "Failed to Acquire Image: %s", VkForge_StringifyResult(result));
+            exit(1);
+        }}
+
         render->status = VKFORGE_RENDER_PENGING_ACQ_IMG;
     }}
 
@@ -810,25 +882,25 @@ void VkForge_UpdateRender(VkForgeRender* render)
         if( VK_SUCCESS == vkGetFenceStatus(render->device, render->acquireImageFence)  )
         {{
             vkResetFences(render->device, 1, &render->acquireImageFence);
-            render->status = VKFORGE_RENDER_DRAWING;
+            if( render->acquireSuccessful )
+                render->status = VKFORGE_RENDER_DRAWING;
+            else
+                render->status = VKFORGE_RENDER_RECREATE;
         }}
     }}
 
     if( VKFORGE_RENDER_DRAWING == render->status )
     {{
-        VkForge_BeginCommandBuffer(render->drawCmdBuf);
-
-        VkImage     swapImage = render->images  [render->index];
-        VkImageView swapView  = render->imgviews[render->index];
-
-        VkForgeImagePair imgPair = {{ swapImage, swapView }};
+        VkForgeImagePair imgPair = {{ render->swapchain_images[render->index], render->swapchain_imgviews[render->index] }};
         VkForgeQuad quad = {{ 0, 0, render->extent.width, render->extent.height }};
+
+        VkForge_BeginCommandBuffer(render->drawCmdBuf);
 
         VkForge_CmdBeginRendering(render->drawCmdBuf, imgPair, render->color, quad);
 
         render->drawCallback(*render);
 
-        VkForge_CmdEndRendering(render->drawCmdBuf, swapImage);
+        VkForge_CmdEndRendering(render->drawCmdBuf, imgPair);
 
         VkForge_EndCommandBuffer(render->drawCmdBuf);
 
@@ -848,7 +920,29 @@ void VkForge_UpdateRender(VkForgeRender* render)
             render->submitQueueFence
         );
 
-        VkForge_QueuePresent(render->queue, render->swapchain, render->index, render->drawSemaphore);
+        VkResult result = VkForge_QueuePresent
+        (
+            render->queue, 
+            render->swapchain, 
+            render->index, 
+            render->drawSemaphore
+        );
+
+        if( VK_SUCCESS == result )
+        {{
+            render->presentSuccessful = true;
+            render->swapchainRecreationCount = 0; // reset swapchain creation count once there is a successful present.
+        }}
+        else if( VK_SUBOPTIMAL_KHR == result || VK_ERROR_OUT_OF_DATE_KHR == result )
+        {{
+            render->presentSuccessful = false;
+            SDL_LogError(0, "Failed to Present Queue due to %s. %d The swapchain will be re-created.", counter++, VkForge_StringifyResult(result));
+        }}
+        else
+        {{
+            SDL_LogError(0, "Failed to Present Queue: %s", VkForge_StringifyResult(result));
+            exit(1);
+        }}
 
         render->status = VKFORGE_RENDER_PENDING_SUBMIT;
     }}
@@ -858,6 +952,40 @@ void VkForge_UpdateRender(VkForgeRender* render)
         if( VK_SUCCESS == vkGetFenceStatus(render->device, render->submitQueueFence) )
         {{
             vkResetFences(render->device, 1, &render->submitQueueFence);
+
+            if( render->presentSuccessful )
+                render->status = VKFORGE_RENDER_READY;
+            else
+                render->status = VKFORGE_RENDER_RECREATE;
+        }}
+    }}
+
+    if( VKFORGE_RENDER_RECREATE == render->status )
+    {{
+        // Ensure Window is no longer minimized
+        int width, height;
+        if( !SDL_GetWindowSizeInPixels(render->window, &width, &height) )
+        {{
+            SDL_LogError(0, "Can not acquire the Window Size");
+            exit(1);
+        }}
+
+        VkSurfaceCapabilitiesKHR surface_cap = VkForge_GetSurfaceCapabilities(render->physical_device, render->surface);
+
+        if( width && height && surface_cap.currentExtent.width && surface_cap.currentExtent.height )
+        {{
+            if( VKFORGE_MAX_SWAPCHAIN_RECREATION < render->swapchainRecreationCount )
+            {{
+                SDL_LogError(0, "Swapchain has been recreated too many times without resolution.");
+                exit(1);
+            }}
+
+            SDL_LogInfo(0, "Recreating Swapchain for Window %dx%d", width, height);
+
+            VkForge_ReCreateRenderSwapchain(render);
+            VkForge_RefreshRenderData(render);
+            render->swapchainRecreationCount ++;
+
             render->status = VKFORGE_RENDER_READY;
         }}
     }}
@@ -879,5 +1007,6 @@ def GetCoreStrings(ctx: VkForgeContext):
         CreateCreateRender(ctx),
         CreateUpdateRender(ctx),
         CreateRefreshRender(ctx),
-        CreateDestroyRender(ctx)
+        CreateDestroyRender(ctx),
+        CreateReCreateRenderSwapchain(ctx)
     ]

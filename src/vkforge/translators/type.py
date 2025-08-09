@@ -14,10 +14,6 @@ struct VkForgeCore
     uint32_t         queue_family_index;
     VkDevice         device;
     VkQueue          queue;
-    VkSwapchainKHR   swapchain;
-    uint32_t         swapchain_size;
-    VkImage*         swapchain_images;
-    VkImageView*     swapchain_imgviews;
     VkCommandPool    cmdpool;
 }};
 """
@@ -125,6 +121,8 @@ struct VkForgeTexture
 
 def CreateRender(ctx: VkForgeContext):
     content = """\
+#define VKFORGE_MAX_SWAPCHAIN_RECREATION 128
+
 typedef enum VkForgeRenderStatus VkForgeRenderStatus;
 
 enum VkForgeRenderStatus
@@ -136,6 +134,7 @@ enum VkForgeRenderStatus
     VKFORGE_RENDER_DRAWING,
     VKFORGE_RENDER_SUBMITTING,
     VKFORGE_RENDER_PENDING_SUBMIT,
+    VKFORGE_RENDER_RECREATE
 }};
 
 typedef struct VkForgeRender VkForgeRender;
@@ -143,6 +142,7 @@ typedef void (*VkForgeRenderCallback)(VkForgeRender render);
 
 struct VkForgeRender
 {{
+    SDL_Window*           window;
     VkPhysicalDevice      physical_device;
     VkSurfaceKHR          surface;
     VkDevice              device;
@@ -153,9 +153,13 @@ struct VkForgeRender
     VkCommandBuffer       drawCmdBuf;
     VkForgeRenderCallback copyCallback;
     VkForgeRenderCallback drawCallback;
+    VkFormat              req_format;
+    uint32_t              req_swapchain_size;
+    VkPresentModeKHR      req_present_mode;
     VkSwapchainKHR        swapchain;
-    VkImage*              images;
-    VkImageView*          imgviews;
+    uint32_t              swapchain_size;
+    VkImage*              swapchain_images;
+    VkImageView*          swapchain_imgviews;
     uint32_t              index;
     VkFence               acquireImageFence;
     VkFence               submitQueueFence;
@@ -164,6 +168,9 @@ struct VkForgeRender
     const char*           color;
     VkForgeRenderStatus   status;
     void*                 userData;
+    bool                  acquireSuccessful;
+    bool                  presentSuccessful;
+    uint16_t              swapchainRecreationCount; //prevents a loop of recreating the swapchain
 }};
 """
     return content.format()

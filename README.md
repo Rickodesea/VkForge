@@ -1,305 +1,156 @@
-# VkForge
+# VkForge - Vulkan End-User API Implementation Generator
 
-**VkForge** (Vulkan Forge) is a **Vulkan User-End API Implementation Generator** written in **Python**. It's purpose is to quickly generate the code needed for Graphics Renderer development.
+[![PyPI version](https://img.shields.io/pypi/v/vkforge)](https://pypi.org/project/vkforge/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-VkForge is the opposite of using a wrapper layer (like SDL_GPU or shVulkan).  
-Instead of abstracting Vulkan, you use the **Vulkan API directly** — but VkForge saves you from writing all the repetitive boilerplate by generating it for you, based on your **shaders** and a simple **config**.
+**VkForge** is a **lean Vulkan code generator** that helps you write Vulkan applications faster by generating boilerplate implementations. It gives you direct control over Vulkan while automating repetitive setup code.
 
-VkForge does not force any design pattern — you have the same freedom as hand-written Vulkan.  
-By design, VkForge does not generate an entire renderer — it generates **components** for you to connect as you wish.
+## Why Use VkForge?
 
-VkForge also provides a list of utility code that makes it quicker to code in Vulkan. If the utility function
-abstracts away something you want to control, just use the direct Vulkan function.
+- **Write real Vulkan code** - No hidden abstractions or magic  
+- **Save development time** - Generate Vulkan boilerplate instantly  
+- **Small and focused** - C99 code, C++ compatible  
+- **Flexible usage** - Pick only what you need  
+- **SDL3 integration** - With plans for more platform support  
 
----
-
-## VkForge Source
-
-The input for VkForge is:
-- **Shaders:** Provide type, location, descriptor sets, and bindings.
-- **Config:** Defines pipeline details and other setup.
-
----
-
-## VkForge Output
-
-VkForge generates **C99 source code** for your Vulkan implementation.  
-Platform integration is done via **SDL3**.
-We are hoping to improve VkForge — see [CONTRIBUTING.md](CONTRIBUTING.md).
-Feel free to contribute by using it, reporting issues, making pull requests and via othe produtive ways!
-
----
-
-## Generated Code
-
-The generated C code is split into:
-- core : the core vulkan objects
-- utils: the utility vulkan functions
-- pipelines: the generated pipelines based on your shaders
-- layout: the generated layouts based on your shaders
-- header files with type and function declarations
-
-Example Implementation:
 ```c
-#include <SDL3/SDL.h>
+// Example: Get started quickly
+#include "vkforge_typedecls.h"  // Generated type declarations
+#include "vkforge_funcdecls.h"  // Generated function declarations
+
+int main() {
+    SDL_Window* window = SDL_CreateWindow("App", 800, 600, SDL_WINDOW_VULKAN);
+    VkForgeCore* core = VkForge_CreateCore(window, 0, 0); // Convenience creator for core Vulkan objects
+    VkForgeRender* render = VkForge_CreateRender(/*...*/); // Object designed for rending with Vulkan
+    
+    while(running) {
+        VkForge_UpdateRender(render); // Handles Vulkan complexity
+    }
+}
+```
+
+## Key Features
+
+### Automatic Vulkan Implementation
+- Generates Vulkan initialization code (instance, device, swapchain)
+- Creates pipelines from your shaders
+- Builds descriptor layouts automatically
+- Uses glslangValidator (from Vulkan SDK) for GLSL compilation
+
+### Helpful Utilities
+- Basic texture loading via SDL3_image
+- Memory management helpers
+- Synchronization utilities
+- Dynamic rendering (Vulkan 1.3)
+
+### Flexible Generation
+- Generate complete implementations or just specific components
+- Mix generated and handwritten code
+- Update pipelines as shaders change
+
+## How It Works
+
+VkForge generates clean C code by analyzing:
+
+1. **Your Shaders** (SPIR-V / GLSL source (compiled automatically))
+2. **Your Configuration** (YAML format)
+
+```yaml
+# Example vkforge.yml
+ID: VkForge 0.5
+
+Pipeline: # Atleast one pipeline to generate pipeline code and layout code
+  - name: MainPipeline
+    ShaderModule: # layouts are automatically designed from shader combinations
+      - path: shaders/main.vert 
+      - path: shaders/main.frag
+    VertexInputBindingDescription: # describe how vertex locations are binded to buffers
+      - stride: sizeof(Vertex) # Can be Type, Sizeof or Integer
+        first_location: 0
+```
+
+## Getting Started
+
+1. Install VkForge:
+```bash
+pip install vkforge
+```
+
+2. Ensure glslangValidator is in your PATH (comes with Vulkan SDK)
+
+3. Create your config file and run:
+```bash
+vkforge config.yml --source-dir src --build-dir build
+```
+
+4. Use the generated code:
+```c
 #include "vkforge_typedecls.h"
 #include "vkforge_funcdecls.h"
 
-#define UPDATE_TICKS (1000 / 120)
-#define DRAW_TICKS   (1000 / 60)
-
-static void CopyCallback(VkForgeRender render) {
-}
-
-static void DrawCallback(VkForgeRender render) {
-}
-
-int main()
-{
-    if(!SDL_Init(SDL_INIT_VIDEO))
-    {
-        SDL_Log("[SDL] Failed to initialize: %s", SDL_GetError());
-        exit(1);
-    }
-
-    SDL_Window* window = SDL_CreateWindow("VKFORGE", 400, 400, SDL_WINDOW_VULKAN);
-    if(!window)
-    {
-        SDL_Log("[SDL] Failed to create window: %s", SDL_GetError());
-        SDL_Quit();
-        exit(1);
-    }
-
-    VkForgeCore* core = VkForge_CreateCore(
-        window,
-        VK_FORMAT_B8G8R8A8_UNORM,
-        2,                         // Double buffering
-        VK_PRESENT_MODE_FIFO_KHR,  // VSync enabled
-        0, // Extensions requested - VkForge already request the basic required ones
-        0
-    );
-
-    if(!core)
-    {
-        SDL_Log("[Vulkan] Failed to create core");
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        exit(1);
-    }
-
-    /// VkForge Special Layout Feature
-    /// It design your layout automatically based on all combination of your shaders.
-    /// You can also create your pipelines from it.
-    /// You name your pipeline in your config file.
-    VkForgeLayout* layout = VkForge_CreateLayout(core); 
-    if(!layout || VkForge_CreatePipeline(layout, "MyPipeline") != VK_SUCCESS)
-    {
-        SDL_Log("[Vulkan] Failed to setup pipeline");
-        if(layout) VkForge_DestroyLayout(layout);
-        VkForge_DestroyCore(core);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        exit(1);
-    }
-
-    /// VkForge Special Render Feature
-    /// Manages sync for you in the fastest possible way!
-    /// Manages the swapchain and dynamic rendering and clear screen.
-    /// You insert your custom logic via the callbacks.
-    VkForgeRender* render = VkForge_CreateRender(
-        core->physical_device,
-        core->surface,
-        core->device,
-        core->queue,
-        core->cmdpool,
-        core->swapchain,
-        core->swapchain_images,
-        core->swapchain_imgviews,
-        CopyCallback,
-        DrawCallback,
-        "F9CB99", //Clear screen color. Just copy and past from sites like https://colorhunt.co/
-        layout    // Pass any data here and your callbacks will have access. In this case we pass
-                  // VkForge special layout as user data.
-    );
-
-    if(!render)
-    {
-        SDL_Log("[Vulkan] Failed to create renderer");
-        VkForge_DestroyLayout(layout);
-        VkForge_DestroyCore(core);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        exit(1);
-    }
-
-    bool running = true;
-    Uint64 current_ticks;
-    Uint64 u_previous_ticks = SDL_GetTicks();
-    Uint64 d_previous_ticks = u_previous_ticks;
-    Uint64 u_accumulate_ticks = 0;
-    Uint64 d_accumulate_ticks = 0;
-
-    while(running)
-    {
-        SDL_Event event;
-        while(SDL_PollEvent(&event))
-        {
-            if(event.type == SDL_EVENT_QUIT)
-                running = false;
-        }
-
-        current_ticks = SDL_GetTicks();
-        Sint64 u_elapsed_ticks = current_ticks - u_previous_ticks + u_accumulate_ticks;
-        Sint64 d_elapsed_ticks = current_ticks - d_previous_ticks + d_accumulate_ticks;
-
-        if(u_elapsed_ticks >= UPDATE_TICKS)
-        {
-            u_accumulate_ticks = u_elapsed_ticks - UPDATE_TICKS;
-            u_previous_ticks = current_ticks;            
-            //You game logic here
-            //Ex: Move player left by 200 pixels, etc
-        }
-
-        if(d_elapsed_ticks >= DRAW_TICKS)
-        {
-            d_accumulate_ticks = d_elapsed_ticks - DRAW_TICKS;
-            d_previous_ticks = current_ticks;
-
-            // You update any buffer that will be copied in the copyCallback here.
-
-            VkForge_UpdateRender(render); //This function handles everything including rendering.
-        }
-    }
-
-    // Cleanup
-    vkDeviceWaitIdle(core->device);
-    VkForge_DestroyRender(render);
-    VkForge_DestroyLayout(layout);
-    VkForge_DestroyCore(core);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
-
-    return 0;
+void DrawCallback(VkForgeRender render) {
+    VkForge_BindPipeline(render.userData, "MainPipeline", render.drawCmdBuf);
+    vkCmdDraw(render.drawCmdBuf, 3, 1, 0, 0);
 }
 ```
 
-Here is a sample config that is combined with the shaders to provide info to generate your pipelines and layouts.
+## Usage Patterns
 
-```yml
-ID: VkForge 0.5 # required identifier
+VkForge is designed to be flexible:
 
-UserDefined: # optional
-  includes: # you can add your custom includes to VkForge generated code
-  - <stdlib.h>
-  insertions: # you can add your custom code to VkForge generated code
-  - extern int MY_VAL;
-  - typedef struct Vertex Vertex;
-  - struct Vertex { float x, y, w, h; };
+- **Starter Template** - Generate all code once and modify manually
+- **Pipeline Updates** - Regenerate only pipelines when shaders change
+- **Partial Adoption** - Use only specific generated components
+- **Convenience Components** - Provide automatic layout design and render management
 
+```yaml
+# Generate certain files just once
 GenerateOnce:
-- CMakeLists.txt # stop VkForge from regenerating specific files
-
-InstanceCreateInfo: # optional
-  useValidationFeatureEnableBestPracticesEXT: true 
-
-DebugUtilsMessengerCreateInfoEXT: # optional
-  messageSeverity:  #specify severity, etc
-  - info
-  messageType:
-  - general # in some cases simplified values are supported. Check schema.
-  - VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT # all literal Vulkan values supported
-  
-
-DeviceCreateInfo: # optional
-  PhysicalDeviceFeatures:
-    geometryShader: true
-
-Pipeline: # requires atleast 1 pipeline
-  - name: MyPipeline # all pipeline must have a name
-    ShaderModule: # must have vert and frag shaders. can add more types
-      - path: vert.vert 
-      - path: frag.frag
-    VertexInputBindingDescription: # each item in list is a vertex buffer binding
-      - stride: Vertex # stride can be type (in this case your custom type)
-        first_location: 0 # you must specify the first location of this binding (you shader can have many locations so VkForge need to know which location belong to which binding)
-        members: # optionally you can specify members
-        - x # each member is used as an offset in offset specification
-        - y # if you dont provide members, VkForge will calculate this automatically for you
-        - w # assuming tightly packed.
-        - z
-  - name: Default
-    ShaderModule:
-      - path: default.vert
-      - path: default.frag
-    VertexInputBindingDescription:
-      - stride: sizeof(long)
-        first_location: 0
-  - name: Mix
-    ShaderModule:
-      - path: default.vert # you can have any combination of shaders per pipeline
-      - path: frag.frag
-    VertexInputBindingDescription:
-      - stride: sizeof(long) # size of is allowed
-        first_location: 0
-  - name: Different # You can have any number of pipelines
-    ShaderModule:
-      - path: different.vert 
-      - path: different.frag
-    VertexInputBindingDescription:
-      - stride: 42 # numbers is allowed
-        first_location: 0
-
+- CMakeLists.txt
+- vkforge_core.c
 ```
 
-See [schema](src/vkforge/schema.py) for more details on Config Schema for VkForge.
+## Current Limitations
 
-How to Install and Use VkForge:
-```bash
-pip install vkforge
-vkforge -h
-```
+- Vulkan 1.3 with dynamic rendering only (renderpass support planned)
+- SDL3 platform support (others planned)
+- Basic feature set (see roadmap below)
 
-```bash
-vkforge examples/basic/vkforge.yml --source-dir build/source/basic --build-dir build --config-roots examples/basic
-```
+## Roadmap
 
-See [REFERENCE](REFERENCE.md) for more details.
+Help wanted on these features! Contribute via pull requests or ideas.
 
----
+- Optimize Design layout to only store unique data globally
+- Add support for push constants
+- Add support for subpass inputs
+- Add support for Renderpass (pre-1.3 Vulkan)
+- Platform abstraction (Raylib, GLFW support)
+- Alternative texture loading backends (stb_image)
+- 3D utility functions
+- Extended utility functions with pNext and pAllocator support ??
 
-## Todo
+## Community & Contribution
 
-- [ ] Add support for push constants.
-- [ ] Add support for subpass inputs.
-- [ ] Add support for Renderpass and earlier versions: Currently only support Vulkan >= 1.3 and Dynamic Rendering. 
-- [ ] Platform abstraction: Allow users to pass a flag `vkforge --platform SDL3` with options like `Raylib`, `GLFW`, etc. VkForge will generate the code specific for the platform you want.
-- [ ] Sub-Platform abstraction: I can combined SDL3 as my main platform and then use SDL3_image, stb_image, etc to load images and so on. `vkforge --platform-image SDL3_image`.
-- [ ] 3D utility functions: Utility functions specific for 3D rendering
-- [ ] Extended version utility functions: Extended utility functions provide additional parameters that allow the user to pass pNext and pAllocationCallbacks.
+VkForge is **open source** and **MIT licensed**. We welcome all contributions!
 
----
+- Try it out and report issues
+- Help implement roadmap features
+- Improve documentation
+- Share with others who might find it useful
 
-## Connections
+🔗 [GitHub Repository](https://github.com/Rickodesea/VkForge)  
+📦 [PyPI Package](https://pypi.org/project/vkforge/)  
+💬 [Discussions](https://github.com/Rickodesea/VkForge/discussions)  
 
-* [VkForge Python Package](https://pypi.org/project/vkforge/) - Check out for stable release
-* [VkForge Github](https://github.com/Rickodesea/VkForge) - Check out for latest release and updates
+## Why VkForge?
 
----
+Vulkan is powerful but requires lots of boilerplate. VkForge helps by:
+- Generating the repetitive code
+- Providing useful components
+- Providing convenient utility functions
+- Keeping you in control of the Vulkan API
+- Staying out of your way when you don't need it
 
-## Purpose
-
-Vulkan is extremely detailed — this is a good thing!  
-But it can mean tedious and repetitive coding.  
-VkForge solves this by letting you describe your Vulkan setup in a simple Config file.  
-A config is short, easy to write, and saves hours of manual work.
-
----
-
-## Closing
-
-VkForge is free and MIT licensed — contributions are welcome!  
-I hope you find it useful for your projects.
-
-VkForge is led and maintained by its benevolent leader, Alrick Grandison.
+**Small. Focused. Flexible.**  
 
 (c) 2025 Alrick Grandison, Algodal

@@ -65,6 +65,10 @@ def extract_function_declarations(content: str) -> list[str]:
             continue
 
         decl = f"{return_type} {name}({params});"
+        
+        if decl.startswith("else "):
+            continue
+
         functions.append(decl)
 
     return functions

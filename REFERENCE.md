@@ -18,10 +18,6 @@ struct VkForgeCore {
     uint32_t         queue_family_index;
     VkDevice         device;
     VkQueue          queue;
-    VkSwapchainKHR   swapchain;
-    uint32_t         swapchain_size;
-    VkImage*         swapchain_images;
-    VkImageView*     swapchain_imgviews;
     VkCommandPool    cmdpool;
 };
 ```
@@ -30,23 +26,18 @@ struct VkForgeCore {
 - `VkForge_CreateCore()`: Initializes all core Vulkan objects
 - `VkForge_DestroyCore()`: Cleans up all resources
 
-### 2. Pipeline Generation System
+### 2. Automatic Swapchain Management with VkForgeRender
 
-VkForge's standout feature is its pipeline generator that automatically creates pipeline implementations based on your shaders and configuration.
+The `VkForgeRender` system provides automatic swapchain management including:
 
-#### Key Benefits:
-- Generates pipeline implementation code from shaders
-- Handles descriptor set layouts automatically
-- Provides pipeline creation by name
-- Maintains full visibility of the generated code
-
-### 3. Rendering System
-
-The `VkForgeRender` structure and related functions manage the rendering loop:
+- **Automatic recreation** when window is resized or minimized/maximized
+- **Failure recovery** for swapchain recreation (up to `VKFORGE_MAX_SWAPCHAIN_RECREATION` attempts)
+- **State management** of the rendering lifecycle
 
 ```c
 struct VkForgeRender {
     // Core objects
+    SDL_Window*           window;
     VkPhysicalDevice      physical_device;
     VkSurfaceKHR          surface;
     VkDevice              device;
@@ -60,11 +51,13 @@ struct VkForgeRender {
     VkForgeRenderCallback copyCallback;
     VkForgeRenderCallback drawCallback;
     
-    // Swapchain
+    // Swapchain management
     VkSwapchainKHR        swapchain;
-    VkImage*              images;
-    VkImageView*          imgviews;
+    VkImage*              swapchain_images;
+    VkImageView*          swapchain_imgviews;
+    uint32_t              swapchain_size;
     uint32_t              index;
+    uint16_t              swapchainRecreationCount;
     
     // Sync objects
     VkFence               acquireImageFence;
@@ -76,81 +69,55 @@ struct VkForgeRender {
     const char*           color;
     VkForgeRenderStatus   status;
     void*                 userData;
+    bool                  acquireSuccessful;
+    bool                  presentSuccessful;
 };
 ```
 
+#### Key Features:
+- Automatically detects and handles swapchain invalidation (window resize, minimization)
+- Maintains a recreation counter to prevent infinite recreation loops
+- Provides clear error reporting when swapchain recreation fails
+- Manages the complete rendering lifecycle state machine
+- Provides a render loop and automatic synchronization design to render as fast as possible
+
 #### Key Functions:
-- `VkForge_CreateRender()`: Sets up the renderer
+- `VkForge_CreateRender()`: Sets up the renderer and initial swapchain
 - `VkForge_UpdateRender()`: Manages the render loop state machine
 - `VkForge_DestroyRender()`: Cleans up render resources
+- `VkForge_ReCreateRenderSwapchain()`: Internal function for swapchain recreation
 
-## Getting Started
+### 3. Pipeline Layout System
 
-### Basic Initialization
+VkForge's layout system stores optimized pipeline layout designs for all shader combinations:
 
-```c
-// Initialize SDL and create window
-SDL_Window* window = SDL_CreateWindow("VKFORGE", 400, 400, SDL_WINDOW_VULKAN);
-
-// Initialize VkForge core
-VkForgeCore* core = VkForge_CreateCore(
-    window,
-    VK_FORMAT_B8G8R8A8_UNORM,  // Requested format
-    2,                         // Double buffering
-    VK_PRESENT_MODE_FIFO_KHR,  // VSync enabled
-    NULL,                      // No additional device extensions
-    0
-);
-
-// Create pipeline layout
-VkForgeLayout* layout = VkForge_CreateLayout(core);
-
-// Create pipeline by name
-VkForge_CreatePipeline(layout, "MyPipeline");
-
-// Create renderer
-VkForgeRender* render = VkForge_CreateRender(
-    core->physical_device,
-    core->surface,
-    core->device,
-    core->queue,
-    core->cmdpool,
-    core->swapchain,
-    core->swapchain_images,
-    core->swapchain_imgviews,
-    CopyCallback,
-    DrawCallback,
-    "FFFFFF",  // White clear color
-    layout     // User data
-);
-```
-
-### Main Loop
+- Layout designs are generated during build time and stored in `layout.c`
+- Single layout design used for the entire application
+- Automatically creates descriptor set layouts and pipeline layouts based on shader requirements
 
 ```c
-while (running) {
-    // Handle events
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-        if (event.type == SDL_EVENT_QUIT)
-            running = false;
-    }
+// Example generated layout design
+static VkForgeLayoutBindDesign BIND_0_0_0 = {
+    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, 1, STAGE_0_0_0
+};
 
-    // Update and render
-    VkForge_UpdateRender(render);
-}
+static VkForgeLayoutDescriptorSetLayoutDesign DESCRIPTOR_SET_LAYOUT_0_0 = {
+    14, BIND_DESIGNS_0_0  // 14 bindings
+};
+
+static VkForgeLayoutPipelineLayoutDesign PIPELINE_LAYOUT_0 = {
+    1, DESCRIPTOR_SET_LAYOUTS_0  // 1 descriptor set layout
+};
 ```
 
-## Pipeline System
+### 4. Pipeline Generation System
 
-### Pipeline Creation
+VkForge generates pipeline implementations based on your shaders:
 
-VkForge generates pipeline implementations based on your shaders. The generated code includes:
-
-1. Vertex input descriptions
-2. Pipeline state configurations
-3. Shader module creation
-4. Pipeline creation
+- Generates pipeline implementation code from shaders
+- Handles descriptor set layouts automatically
+- Provides pipeline creation by name
+- Maintains full visibility of the generated code
 
 Example generated pipeline:
 
@@ -178,22 +145,53 @@ VkPipeline VkForge_CreatePipelineForMyPipeline(
 }
 ```
 
-### Pipeline Layouts
+## Getting Started
 
-VkForge automatically creates descriptor set layouts and pipeline layouts based on your shader's requirements:
+### Basic Initialization
 
 ```c
-static VkForgeLayoutBindDesign BIND_0_0_0 = {
-    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, 1, STAGE_0_0_0
-};
+// Initialize SDL and create window
+SDL_Window* window = SDL_CreateWindow("VKFORGE", 400, 400, SDL_WINDOW_VULKAN);
 
-static VkForgeLayoutDescriptorSetLayoutDesign DESCRIPTOR_SET_LAYOUT_0_0 = {
-    14, BIND_DESIGNS_0_0  // 14 bindings
-};
+// Initialize VkForge core
+VkForgeCore* core = VkForge_CreateCore(
+    window,
+    NULL,  // No additional device extensions
+    0
+);
 
-static VkForgeLayoutPipelineLayoutDesign PIPELINE_LAYOUT_0 = {
-    1, DESCRIPTOR_SET_LAYOUTS_0  // 1 descriptor set layout
-};
+// Create renderer with automatic swapchain management
+VkForgeRender* render = VkForge_CreateRender(
+    window,
+    core->physical_device,
+    core->surface,
+    core->device,
+    core->queue,
+    core->cmdpool,
+    VK_FORMAT_B8G8R8A8_UNORM,  // Requested format
+    2,                         // Double buffering
+    VK_PRESENT_MODE_FIFO_KHR,  // VSync enabled
+    CopyCallback,
+    DrawCallback,
+    "FFFFFF",  // White clear color
+    NULL       // User data
+);
+```
+
+### Main Loop
+
+```c
+while (running) {
+    // Handle events
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        if (event.type == SDL_EVENT_QUIT)
+            running = false;
+    }
+
+    // Update and render - swapchain will be automatically managed
+    VkForge_UpdateRender(render);
+}
 ```
 
 ## Utility Functions
@@ -223,30 +221,66 @@ VkForge provides numerous utility functions for common Vulkan operations:
 
 ## Best Practices
 
-1. **Pipeline Creation**: Use the generated pipeline functions rather than creating pipelines manually
-2. **Resource Management**: Take advantage of the `VkForgeBufferAlloc` and `VkForgeImageAlloc` helper structures
-3. **Rendering**: Use the `VkForgeRender` system for managing the render loop
-4. **Error Handling**: Check all VkForge functions for failure (many will exit on error)
+1. **Swapchain Management**: Let VkForgeRender handle swapchain recreation automatically
+2. **Pipeline Creation**: Use the generated pipeline functions rather than creating pipelines manually
+3. **Resource Management**: Take advantage of the `VkForgeBufferAlloc` and `VkForgeImageAlloc` helper structures
+4. **Error Handling**: The system will exit on critical errors but provides clear error messages
+5. **Layout Design**: Use the generated layout system for consistent pipeline layouts across your application
 
-## Example Shader Setup
+## Advanced Features
 
-VkForge works with your existing SPIR-V shaders. Just place them in the expected location (e.g., `build/vert.vert.spv` and `build/frag.frag.spv`) and the pipeline generator will create appropriate pipeline code.
+### Automatic Swapchain Recovery
+
+VkForgeRender includes robust swapchain recovery:
+- Automatically handles `VK_ERROR_OUT_OF_DATE_KHR` and `VK_SUBOPTIMAL_KHR`
+- Limits recreation attempts to prevent infinite loops (`VKFORGE_MAX_SWAPCHAIN_RECREATION`)
+- Verifies window is valid before attempting recreation
+- Provides clear error messages when recovery fails
+
+### State Management
+
+The renderer maintains a clear state machine:
+```c
+enum VkForgeRenderStatus {
+    VKFORGE_RENDER_READY,
+    VKFORGE_RENDER_COPYING,
+    VKFORGE_RENDER_ACQING_IMG,
+    VKFORGE_RENDER_PENGING_ACQ_IMG,
+    VKFORGE_RENDER_DRAWING,
+    VKFORGE_RENDER_SUBMITTING,
+    VKFORGE_RENDER_PENDING_SUBMIT,
+    VKFORGE_RENDER_RECREATE
+};
+```
+
+### Texture Loading
+
+VkForge provides a complete texture loading utility:
+```c
+VkForgeTexture VkForge_CreateTexture(
+    VkPhysicalDevice physical_device,
+    VkDevice device,
+    VkQueue queue,
+    VkCommandBuffer commandBuffer,
+    const char* filename
+);
+```
 
 ## Advantages Over Raw Vulkan
 
 1. **Faster Setup**: Get a clear screen rendering in <30 minutes vs. a full day with raw Vulkan
-2. **Maintainable**: Generated code is visible and modifiable
-3. **Consistent**: Enforces good practices across projects
-4. **Flexible**: Mix VkForge convenience functions with raw Vulkan as needed
-5. **Foundation**: You can build on top of the initial generated code
-6. **Toolchain**: You can use VkForge as part of a tool chain to generate your base Vulkan code
+2. **Automatic Management**: Swapchain and state management handled automatically
+3. **Maintainable**: Generated code is visible and modifiable
+4. **Consistent**: Enforces good practices across projects
+5. **Flexible**: Mix VkForge convenience functions with raw Vulkan as needed
+6. **Toolchain**: Can be used as part of a build system to generate base Vulkan code
 
 ## Limitations
 
-1. Not a full framework - you still need to understand Vulkan concepts and take the components and build what you want.
-2. Generated code may need customization for advanced use cases
-3. Primarily focused on graphics pipelines (not compute) for now. See [CONTRIBUTION](CONTRIBUTION.md) to help improve VkForge. We will love to have helper functions for compute logic.
+1. Not a full framework - you still need to understand Vulkan concepts
+2. Primarily focused on graphics pipelines (not compute) for now
+3. Generated code may need customization for advanced use cases
 
 ## Conclusion
 
-VkForge strikes a balance between convenience and control, making Vulkan more accessible while preserving its power and flexibility. By generating pipeline code and providing utility functions for common tasks, it significantly reduces the boilerplate required for Vulkan applications while keeping all implementation details visible and modifiable.
+VkForge strikes a balance between convenience and control, making Vulkan more accessible while preserving its power and flexibility. By generating pipeline code, managing swapchains automatically, and providing utility functions for common tasks, it significantly reduces the boilerplate required for Vulkan applications while keeping all implementation details visible and modifiable.
