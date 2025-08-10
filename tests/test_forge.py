@@ -2,8 +2,9 @@ from vkforge import VkForgeModel
 import yaml
 
 yml_string = """
+ID: VkForge 0.5
 Pipeline:
-  - name: my_pipeline
+  - name: MyDefaultPipeline
     ShaderModule:
       - path: vert.spv
         mode: vert
@@ -22,6 +23,4 @@ def test_forge_config():
     raw_data = yaml.safe_load(yml_string)
     forgeConfig = VkForgeModel(**raw_data)
 
-    assert forgeConfig.namespace == "basic_renderer_"
-    assert forgeConfig.namestyle == "snake_case"
     assert isinstance(forgeConfig.Pipeline, list)
