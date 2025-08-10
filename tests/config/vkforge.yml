@@ -25,32 +25,39 @@ DeviceCreateInfo:
     geometryShader: true
 
 Pipeline:
-  - name: MyPipeline
+  - name: Test
+    ShaderModule:
+      - path: test.vert
+      - path: default.frag
+    VertexInputBindingDescription:
+      - stride: Vertex
+        first_location: 0
+  - name: Test2
+    ShaderModule:
+      - path: test2.vert
+      - path: default.frag
+    VertexInputBindingDescription:
+      - stride: Vertex
+        first_location: 0
+  - name: Test3
+    ShaderModule:
+      - path: default.vert
+      - path: default.frag
+    VertexInputBindingDescription:
+      - stride: Vertex
+        first_location: 0
+  - name: Test4
+    ShaderModule:
+      - path: different.vert
+      - path: different.frag
+    VertexInputBindingDescription:
+      - stride: Vertex
+        first_location: 0
+  - name: Test5
     ShaderModule:
       - path: vert.vert
       - path: frag.frag
     VertexInputBindingDescription:
       - stride: Vertex
-        first_location: 0
-  - name: Default
-    ShaderModule:
-      - path: default.vert
-      - path: default.frag
-    VertexInputBindingDescription:
-      - stride: sizeof(long)
-        first_location: 0
-  - name: Mix
-    ShaderModule:
-      - path: default.vert
-      - path: frag.frag
-    VertexInputBindingDescription:
-      - stride: sizeof(long)
-        first_location: 0
-  - name: Different
-    ShaderModule:
-      - path: different.vert
-      - path: different.frag
-    VertexInputBindingDescription:
-      - stride: sizeof(long)
         first_location: 0
 

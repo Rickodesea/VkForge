@@ -57,7 +57,7 @@ VkPipeline VkForge_CreatePipelineForDefault
 	{
 		{
 			.binding = 0,
-			.stride = sizeof(float) * 2 * 6,
+			.stride = sizeof(float) * 2,
 			.inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
 		},
 		{
@@ -164,7 +164,6 @@ VkPipeline VkForge_CreatePipelineForDefault
 
 	VkGraphicsPipelineCreateInfo pipelineInfo = {0};
 	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipelineInfo.pNext = next;
 	pipelineInfo.stageCount = sizeof(stageInfo)/sizeof(VkPipelineShaderStageCreateInfo);
 	pipelineInfo.pStages = stageInfo;
 	pipelineInfo.pVertexInputState = &inputStateInfo;
@@ -176,6 +175,10 @@ VkPipeline VkForge_CreatePipelineForDefault
 	pipelineInfo.pViewportState = &viewportState;
 	pipelineInfo.pMultisampleState = &multisampleState;
 	pipelineInfo.layout = pipeline_layout;
+
+	/// Ensure VkRenderingInfo is passed to pNext for Successful Dynamic Rendering ///
+	pipelineInfo.pNext = next;
+	///********************///
 	result = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, allocator, &pipeline);
 	if (result != VK_SUCCESS) {
 		SDL_LogError(0, "Failed to create pipeline Default");

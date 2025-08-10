@@ -324,8 +324,8 @@ def CreateGetSurfaceFormat(ctx: VkForgeContext) -> str:
     content = """\
 VkSurfaceFormatKHR VkForge_GetSurfaceFormat
 (
-    VkPhysicalDevice physical_device,
     VkSurfaceKHR     surface,
+    VkPhysicalDevice physical_device,
     VkFormat         req_format
 )
 {{
@@ -357,8 +357,8 @@ def CreateGetSurfaceCapabilities(ctx: VkForgeContext) -> str:
     content = """\
 VkSurfaceCapabilitiesKHR VkForge_GetSurfaceCapabilities
 (
-    VkPhysicalDevice physical_device,
-    VkSurfaceKHR     surface
+    VkSurfaceKHR     surface,
+    VkPhysicalDevice physical_device
 )
 {{
     VkSurfaceCapabilitiesKHR surface_cap = {{0}};
@@ -382,13 +382,13 @@ def CreateGetSwapchainSize(ctx:VkForgeContext) -> str:
     content = """\
 uint32_t VkForge_GetSwapchainSize
 (
-    VkPhysicalDevice physical_device,
     VkSurfaceKHR     surface,
+    VkPhysicalDevice physical_device,
     uint32_t         req_size
 )
 {{
 
-    VkSurfaceCapabilitiesKHR surface_cap = VkForge_GetSurfaceCapabilities(physical_device, surface);
+    VkSurfaceCapabilitiesKHR surface_cap = VkForge_GetSurfaceCapabilities(surface, physical_device);
 
     if ( surface_cap.maxImageCount == 0 )
     {{
@@ -412,8 +412,8 @@ def CreateGetPresentMode(ctx: VkForgeContext) -> str:
     content = """\
 VkPresentModeKHR VkForge_GetPresentMode
 (
-    VkPhysicalDevice physical_device,
     VkSurfaceKHR     surface,
+    VkPhysicalDevice physical_device,
     VkPresentModeKHR req_mode
 )
 {{

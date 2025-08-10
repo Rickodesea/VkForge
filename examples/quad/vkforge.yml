@@ -13,7 +13,7 @@ Pipeline:
   - path: shader.vert
   - path: shader.frag
   VertexInputBindingDescription: # Order of the list refer to the buffer binding. Ensure you bind your vertex buffers in the same order because that's how your generated pipeline codes expects them!
-  - stride: sizeof(float) * 2 * 6 # must put the sizeof first; could also be a numeric int
+  - stride: sizeof(float) * 2 # must put the sizeof first; could also be a numeric int
     first_location: 0
   - stride:         Entity
     first_location: 1

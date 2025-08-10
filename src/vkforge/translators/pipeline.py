@@ -384,7 +384,6 @@ def BuildPipelineInfo(
     
     info += "\t" * indent + "VkGraphicsPipelineCreateInfo pipelineInfo = {0};\n"
     info += "\t" * indent + "pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;\n"
-    info += "\t" * indent + "pipelineInfo.pNext = next;\n"
     info += "\t" * indent + "pipelineInfo.stageCount = sizeof(stageInfo)/sizeof(VkPipelineShaderStageCreateInfo);\n"
     info += "\t" * indent + "pipelineInfo.pStages = stageInfo;\n"
     info += "\t" * indent + "pipelineInfo.pVertexInputState = &inputStateInfo;\n"
@@ -396,6 +395,10 @@ def BuildPipelineInfo(
     info += "\t" * indent + "pipelineInfo.pViewportState = &viewportState;\n"
     info += "\t" * indent + "pipelineInfo.pMultisampleState = &multisampleState;\n"
     info += "\t" * indent + "pipelineInfo.layout = pipeline_layout;\n"
+    info += "\n"
+    info += "\t" * indent + "/// Ensure VkRenderingInfo is passed to pNext for Successful Dynamic Rendering ///\n"
+    info += "\t" * indent + "pipelineInfo.pNext = next;\n"
+    info += "\t" * indent + "///********************///\n"
     
     return info
 

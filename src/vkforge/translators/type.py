@@ -72,17 +72,20 @@ def GetMaxDescriptorSetLayouts(ctx: VkForgeContext):
     layouts = ctx.layout[LAYOUT.PIPELINE_LAYOUT][LAYOUT.LAYOUTS]
     max_descriptorset_layout = 0
     for layout in layouts:
-        if len(layout) > max_descriptorset_layout:
-            max_descriptorset_layout = len(layout)
+        if layout:
+            if len(layout) > max_descriptorset_layout:
+                max_descriptorset_layout = len(layout)
     return max(max_descriptorset_layout, 1)
 
 def GetMaxDescriptorBindings(ctx: VkForgeContext):
     layouts = ctx.layout[LAYOUT.PIPELINE_LAYOUT][LAYOUT.LAYOUTS]
     max_descriptor_binding = 0
     for layout in layouts:
-        for set1 in layout:
-            if len(set1) > max_descriptor_binding:
-                max_descriptor_binding = len(set1)
+        if layout:
+            for set1 in layout:
+                if set1:
+                    if len(set1) > max_descriptor_binding:
+                        max_descriptor_binding = len(set1)
     return max(max_descriptor_binding, 1)
 
 def CreateMaxes(ctx: VkForgeContext) -> str:
@@ -97,6 +100,16 @@ def CreateMaxes(ctx: VkForgeContext) -> str:
         max_pipeline_layouts_value=GetMaxPipelineLayouts(ctx),
         max_descriptorset_layouts_value=GetMaxDescriptorSetLayouts(ctx),
         max_descriptor_bindings_value=GetMaxDescriptorBindings(ctx)
+    )
+
+    return output
+
+def CreateDefaults(ctx: VkForgeContext) -> str:
+    content = """\
+#define VKFORGE_DEFAULT_FORMAT {default_format}
+"""
+    output = content.format(
+        default_format="VK_FORMAT_B8G8R8A8_UNORM"
     )
 
     return output
@@ -208,6 +221,7 @@ struct VkForgeImagePair
 
 def GetTypeStrings(ctx: VkForgeContext):
     return [
+        CreateDefaults(ctx),
         CreateMaxes(ctx),
         CreateCore(ctx),
         CreateBufferAllocType(ctx),

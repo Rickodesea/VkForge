@@ -34,8 +34,10 @@ static void CopyCallback(VkForgeRender render) {
     entity.color[1] = 1;
     entity.color[2] = 1;
     entity.color[3] = 1;
-    entity.size[0] = 0.5f;
-    entity.size[1] = 0.5f;
+    entity.size[0] = 0.2f;
+    entity.size[1] = 0.2f;
+    entity.pos[0] = -.2;
+    entity.pos[1] = 0.2;
 
     entities[entity_count++] = entity;
 
@@ -48,8 +50,10 @@ static void CopyCallback(VkForgeRender render) {
         vkMapMemory(
             render.device, 
             userData->stagingBuffer.memory, 
-            0, sizeof(Entity) * entity_count, 
-            0, &data
+            0, 
+            sizeof(Entity) * entity_count, 
+            0, 
+            &data
         );
         SDL_memcpy(
             data, 
@@ -105,7 +109,7 @@ static void DrawCallback(VkForgeRender render) {
             userData->quadBuffer.buffer,   // Buffer 0: match the Config and Shader
             userData->entityBuffer.buffer  // Buffer 1: match the Config and Shader
         };
-        VkDeviceSize offsets[sizeof(buffers) / sizeof(VkBuffer)] = {0}; //Could be the same buffer bound multiple times at different offsets
+        VkDeviceSize offsets[] = {0, 0}; //Could be the same buffer bound multiple times at different offsets
 
         vkCmdBindVertexBuffers(render.drawCmdBuf, 0, 2, buffers, offsets);
         vkCmdDraw(render.drawCmdBuf, 6, entity_count, 0, 0);
@@ -145,7 +149,11 @@ int main() {
     // Load VkForge Layout Feature
     // It designs pipeline layouts based on all the pipelines in your Config
     // It loads them as needed when you create your pipelines
-    VkForgeLayout* layout = VkForge_CreateLayout(core->device);
+    VkForgeLayout* layout = VkForge_CreateLayout(
+        core->surface, 
+        core->physical_device, 
+        core->device
+    );
 
     if(!layout || VkForge_CreatePipeline(layout, "Default") != VK_SUCCESS)  //Pipeline name is the same name defined in the Config
     {
@@ -276,7 +284,11 @@ int main() {
         }
     }
 
+    SDL_LogInfo(0, "Quitting Application");
     vkDeviceWaitIdle(core->device);
+    VkForge_DestroyBufferAlloc(core->device, userData.quadBuffer);
+    VkForge_DestroyBufferAlloc(core->device, userData.entityBuffer);
+    VkForge_DestroyBufferAlloc(core->device, userData.stagingBuffer);
     VkForge_DestroyRender(render);
     VkForge_DestroyLayout(layout);
     VkForge_DestroyCore(core);

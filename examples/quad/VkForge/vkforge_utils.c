@@ -174,13 +174,13 @@ uint32_t VkForge_GetMemoryTypeIndex
 
 uint32_t VkForge_GetSwapchainSize
 (
-    VkPhysicalDevice physical_device,
     VkSurfaceKHR     surface,
+    VkPhysicalDevice physical_device,
     uint32_t         req_size
 )
 {
 
-    VkSurfaceCapabilitiesKHR surface_cap = VkForge_GetSurfaceCapabilities(physical_device, surface);
+    VkSurfaceCapabilitiesKHR surface_cap = VkForge_GetSurfaceCapabilities(surface, physical_device);
 
     if ( surface_cap.maxImageCount == 0 )
     {
@@ -198,8 +198,8 @@ uint32_t VkForge_GetSwapchainSize
 
 VkSurfaceFormatKHR VkForge_GetSurfaceFormat
 (
-    VkPhysicalDevice physical_device,
     VkSurfaceKHR     surface,
+    VkPhysicalDevice physical_device,
     VkFormat         req_format
 )
 {
@@ -224,8 +224,8 @@ VkSurfaceFormatKHR VkForge_GetSurfaceFormat
 
 VkSurfaceCapabilitiesKHR VkForge_GetSurfaceCapabilities
 (
-    VkPhysicalDevice physical_device,
-    VkSurfaceKHR     surface
+    VkSurfaceKHR     surface,
+    VkPhysicalDevice physical_device
 )
 {
     VkSurfaceCapabilitiesKHR surface_cap = {0};
@@ -243,8 +243,8 @@ VkSurfaceCapabilitiesKHR VkForge_GetSurfaceCapabilities
 
 VkPresentModeKHR VkForge_GetPresentMode
 (
-    VkPhysicalDevice physical_device,
     VkSurfaceKHR     surface,
+    VkPhysicalDevice physical_device,
     VkPresentModeKHR req_mode
 )
 {

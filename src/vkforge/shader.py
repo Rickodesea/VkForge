@@ -108,6 +108,8 @@ def compile_shader(build_dir: str, shader_path: Path) -> Path:
             f"stdout:\n{result.stdout}\n"
             f"stderr:\n{result.stderr}"
         )
+    
+    print(f"COMPILED: {shader_path.name}")
 
     return output_file
 

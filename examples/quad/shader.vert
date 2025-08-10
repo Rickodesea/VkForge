@@ -15,12 +15,25 @@ layout(location = 3) in vec2 inSize;      // Entity.size[2]
 // Output to fragment shader
 layout(location = 0) out vec4 fragColor;
 
+vec2 positions[6] = vec2[](
+    // First triangle (bottom-left, top-left, top-right)
+    vec2(-0.5, -0.5),  // Bottom-left
+    vec2(-0.5,  0.5),  // Top-left
+    vec2( 0.5,  0.5),  // Top-right
+
+    // Second triangle (bottom-left, top-right, bottom-right)
+    vec2(-0.5, -0.5),  // Bottom-left
+    vec2( 0.5,  0.5),  // Top-right
+    vec2( 0.5, -0.5)   // Bottom-right
+);
+
 void main() {
     // Transform position (scale quad by size, then offset by position)
     vec2 worldPos = (inPosition * inSize) + inPos;
     
     // Output position (clip space)
     gl_Position = vec4(worldPos, 0.0, 1.0);
+    //gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
     
     // Pass color to fragment shader
     fragColor = inColor;

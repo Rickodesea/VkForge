@@ -370,8 +370,8 @@ def CreateSwapchain(ctx: VkForgeContext) -> str:
     content = """\
 void VkForge_CreateSwapchain
 (
-    VkPhysicalDevice       physical_device,
     VkSurfaceKHR           surface,
+    VkPhysicalDevice       physical_device,
     VkDevice               device,
     VkSwapchainKHR         old_swapchain,
     VkFormat               req_format,
@@ -392,14 +392,14 @@ void VkForge_CreateSwapchain
     VkResult result;
     VkSwapchainKHR swapchain = VK_NULL_HANDLE;
 
-    VkSurfaceFormatKHR surface_format = VkForge_GetSurfaceFormat(physical_device, surface, req_format);
-    VkSurfaceCapabilitiesKHR surface_cap = VkForge_GetSurfaceCapabilities(physical_device, surface);
+    VkSurfaceFormatKHR surface_format = VkForge_GetSurfaceFormat(surface, physical_device, req_format);
+    VkSurfaceCapabilitiesKHR surface_cap = VkForge_GetSurfaceCapabilities(surface, physical_device);
 
     VkSwapchainCreateInfoKHR createInfo = {{0}};
     createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     createInfo.surface = surface;
     createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    createInfo.minImageCount = VkForge_GetSwapchainSize(physical_device, surface, req_swapchain_size);
+    createInfo.minImageCount = VkForge_GetSwapchainSize(surface, physical_device, req_swapchain_size);
     createInfo.imageFormat = surface_format.format;
     createInfo.imageExtent = surface_cap.currentExtent;
     createInfo.imageArrayLayers = 1;
@@ -407,7 +407,7 @@ void VkForge_CreateSwapchain
     createInfo.imageColorSpace = surface_format.colorSpace;
     createInfo.preTransform = surface_cap.currentTransform;
     createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    createInfo.presentMode = VkForge_GetPresentMode(physical_device, surface, req_present_mode);
+    createInfo.presentMode = VkForge_GetPresentMode(surface, physical_device, req_present_mode);
     createInfo.clipped = VK_TRUE;
     createInfo.oldSwapchain = old_swapchain;
 
@@ -706,8 +706,8 @@ VkForgeRender* VkForge_CreateRender
     render->userData           = userData;
 
     VkForge_CreateSwapchain(
-        physical_device,
         surface,
+        physical_device,
         device,
         0,
         req_format,
@@ -724,7 +724,7 @@ VkForgeRender* VkForge_CreateRender
     render->copySemaphore     = VkForge_CreateSemaphore(device);
     render->drawSemaphore     = VkForge_CreateSemaphore(device);
 
-    VkSurfaceCapabilitiesKHR surface_cap = VkForge_GetSurfaceCapabilities(physical_device, surface);
+    VkSurfaceCapabilitiesKHR surface_cap = VkForge_GetSurfaceCapabilities(surface, physical_device);
     render->extent                       = surface_cap.currentExtent;
 
     VkCommandBuffer cmdbufs[2] = {{VK_NULL_HANDLE}};
@@ -757,7 +757,7 @@ def CreateRefreshRender(ctx: VkForgeContext):
     content = """\
 void VkForge_RefreshRenderData(VkForgeRender* r)
 {{
-    VkSurfaceCapabilitiesKHR surface_cap = VkForge_GetSurfaceCapabilities(r->physical_device, r->surface);
+    VkSurfaceCapabilitiesKHR surface_cap = VkForge_GetSurfaceCapabilities(r->surface, r->physical_device);
     r->extent                            = surface_cap.currentExtent;
 }}
 """
@@ -768,8 +768,8 @@ def CreateReCreateRenderSwapchain(ctx: VkForgeContext):
 void VkForge_ReCreateRenderSwapchain(VkForgeRender* r)
 {{
     VkForge_CreateSwapchain(
-        r->physical_device,
         r->surface,
+        r->physical_device,
         r->device,
         r->swapchain,
         r->req_format,
@@ -970,7 +970,7 @@ void VkForge_UpdateRender(VkForgeRender* render)
             exit(1);
         }}
 
-        VkSurfaceCapabilitiesKHR surface_cap = VkForge_GetSurfaceCapabilities(render->physical_device, render->surface);
+        VkSurfaceCapabilitiesKHR surface_cap = VkForge_GetSurfaceCapabilities(render->surface, render->physical_device);
 
         if( width && height && surface_cap.currentExtent.width && surface_cap.currentExtent.height )
         {{

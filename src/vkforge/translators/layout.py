@@ -250,40 +250,49 @@ def GetStaticSubComponents(layouts, references):
     stage_arrays = []
     stage_index = 0
     for layout_idx, layout in enumerate(layouts):
-        for set_idx, set1 in enumerate(layout):
-            for bind_idx, bind in enumerate(set1):
-                if bind:  # Only for non-empty bindings
-                    _, _, stages = bind
-                    stages = [map_value(SHADER_STAGE_MAP, stage) for stage in stages]
-                    stage_arrays.append(f"static uint32_t STAGE_{layout_idx}_{set_idx}_{bind_idx}[] = {{ {', '.join(map(str, stages))} }};")
-                    stage_index += 1
+        if layout:
+            for set_idx, set1 in enumerate(layout):
+                if set1:
+                    for bind_idx, bind in enumerate(set1):
+                        if bind:  # Only for non-empty bindings
+                            _, _, stages = bind
+                            stages = [map_value(SHADER_STAGE_MAP, stage) for stage in stages]
+                            stage_arrays.append(f"static uint32_t STAGE_{layout_idx}_{set_idx}_{bind_idx}[] = {{ {', '.join(map(str, stages))} }};")
+                            stage_index += 1
+        else:
+            stage_arrays.append("/** NO STAGES **/")
+
     components['static_arrays'] = "\n".join(stage_arrays)
     
     # Generate bind designs
     bind_designs = []
     bind_design_arrays = []
     for layout_idx, layout in enumerate(layouts):
-        for set_idx, set1 in enumerate(layout):
-            set_bind_designs = []
-            for bind_idx, bind in enumerate(set1):
-                if bind:
-                    type1, count, _ = bind
-                    type1 = map_value(DESCRIPTOR_TYPE_MAP, type1)
-                    bind_designs.append(
-                        f"static VkForgeLayoutBindDesign BIND_{layout_idx}_{set_idx}_{bind_idx} = {{\n"
-                        f"    {type1}, {count}, {len(stages)}, STAGE_{layout_idx}_{set_idx}_{bind_idx}\n"
+        if layout:
+            for set_idx, set1 in enumerate(layout):
+                set_bind_designs = []
+                if set1:
+                    for bind_idx, bind in enumerate(set1):
+                        if bind:
+                            type1, count, _ = bind
+                            type1 = map_value(DESCRIPTOR_TYPE_MAP, type1)
+                            bind_designs.append(
+                                f"static VkForgeLayoutBindDesign BIND_{layout_idx}_{set_idx}_{bind_idx} = {{\n"
+                                f"    {type1}, {count}, {len(stages)}, STAGE_{layout_idx}_{set_idx}_{bind_idx}\n"
+                                "};"
+                            )
+                            set_bind_designs.append(f"&BIND_{layout_idx}_{set_idx}_{bind_idx}")
+                        else:
+                            set_bind_designs.append("NULL")
+                    
+                    # Create array for this set's bind designs
+                    bind_design_arrays.append(
+                        f"static VkForgeLayoutBindDesign* BIND_DESIGNS_{layout_idx}_{set_idx}[] = {{\n"
+                        f"    {', '.join(set_bind_designs)}\n"
                         "};"
                     )
-                    set_bind_designs.append(f"&BIND_{layout_idx}_{set_idx}_{bind_idx}")
-                else:
-                    set_bind_designs.append("NULL")
-            
-            # Create array for this set's bind designs
-            bind_design_arrays.append(
-                f"static VkForgeLayoutBindDesign* BIND_DESIGNS_{layout_idx}_{set_idx}[] = {{\n"
-                f"    {', '.join(set_bind_designs)}\n"
-                "};"
-            )
+        else:
+            bind_design_arrays.append("/** NO BINDING **/")
     
     components['static_bind_designs'] = "\n".join(bind_designs + bind_design_arrays)
     
@@ -292,30 +301,39 @@ def GetStaticSubComponents(layouts, references):
     descriptor_set_layout_arrays = []
     for layout_idx, layout in enumerate(layouts):
         layout_descriptor_sets = []
-        for set_idx, set1 in enumerate(layout):
-            descriptor_set_layouts.append(
-                f"static VkForgeLayoutDescriptorSetLayoutDesign DESCRIPTOR_SET_LAYOUT_{layout_idx}_{set_idx} = {{\n"
-                f"    {len(set1)}, BIND_DESIGNS_{layout_idx}_{set_idx}\n"
+        if layout:
+            for set_idx, set1 in enumerate(layout):
+                if set1:
+                    descriptor_set_layouts.append(
+                        f"static VkForgeLayoutDescriptorSetLayoutDesign DESCRIPTOR_SET_LAYOUT_{layout_idx}_{set_idx} = {{\n"
+                        f"    {len(set1)}, BIND_DESIGNS_{layout_idx}_{set_idx}\n"
+                        "};"
+                    )
+                    layout_descriptor_sets.append(f"&DESCRIPTOR_SET_LAYOUT_{layout_idx}_{set_idx}")
+            
+            # Create array for this layout's descriptor sets
+            descriptor_set_layout_arrays.append(
+                f"static VkForgeLayoutDescriptorSetLayoutDesign* DESCRIPTOR_SET_LAYOUTS_{layout_idx}[] = {{\n"
+                f"    {', '.join(layout_descriptor_sets) if layout_descriptor_sets else "0, NULL"}\n"
                 "};"
             )
-            layout_descriptor_sets.append(f"&DESCRIPTOR_SET_LAYOUT_{layout_idx}_{set_idx}")
-        
-        # Create array for this layout's descriptor sets
-        descriptor_set_layout_arrays.append(
-            f"static VkForgeLayoutDescriptorSetLayoutDesign* DESCRIPTOR_SET_LAYOUTS_{layout_idx}[] = {{\n"
-            f"    {', '.join(layout_descriptor_sets)}\n"
-            "};"
-        )
+        else:
+            descriptor_set_layout_arrays.append("/** NO DESCRIPTORSET LAYOUTS **/")
     
     components['static_descriptor_set_layouts'] = "\n".join(descriptor_set_layouts + descriptor_set_layout_arrays)
     
     # Generate pipeline layouts
     pipeline_layouts = []
     for layout_idx, layout in enumerate(layouts):
+        layout_str = ""
+        layout_str += f"static VkForgeLayoutPipelineLayoutDesign PIPELINE_LAYOUT_{layout_idx} = {{\n"
+        if layout:
+            layout_str += f"    {len(layout)}, DESCRIPTOR_SET_LAYOUTS_{layout_idx}\n"
+        else:
+            layout_str += f"    0, NULL\n"
+        layout_str +=  "};"
         pipeline_layouts.append(
-            f"static VkForgeLayoutPipelineLayoutDesign PIPELINE_LAYOUT_{layout_idx} = {{\n"
-            f"    {len(layout)}, DESCRIPTOR_SET_LAYOUTS_{layout_idx}\n"
-            "};"
+            layout_str
         )
     
     # Create array of all pipeline layouts
@@ -352,6 +370,8 @@ def CreateForgeLayout(ctx: VkForgeContext) -> str:
     content = """\
 struct VkForgeLayout
 {{
+    VkSurfaceKHR          surface;
+    VkPhysicalDevice      physical_device;
     VkDevice              device;
     uint8_t               pipeline_count;
     VkPipeline            pipeline_buffer[VKFORGE_MAX_PIPELINES];
@@ -420,7 +440,7 @@ static uint32_t VKFORGE_PIPELINE_FUNCTION_COUNT = {pipeline_count};
 
 def CreateCreateForgeLayout(ctx: VkForgeContext) -> str:
     content = """\
-VkForgeLayout* VkForge_CreateLayout(VkDevice device)
+VkForgeLayout* VkForge_CreateLayout(VkSurfaceKHR surface, VkPhysicalDevice physical_device, VkDevice device)
 {{
     assert(device);
 
@@ -434,6 +454,8 @@ VkForgeLayout* VkForge_CreateLayout(VkDevice device)
     // Initialize all counts to 0
     SDL_memset(layout, 0, sizeof(VkForgeLayout));
 
+    layout->surface = surface;
+    layout->physical_device = physical_device;
     layout->device = device;
     return layout;
 }}
@@ -446,26 +468,24 @@ void VkForge_DestroyLayout(VkForgeLayout* layout)
 {{
     if ( layout )
     {{
-        vkDeviceWaitIdle(layout->device);
-        
         // Destroy all pipelines
-        for (uint8_t i = 0; i < layout->pipeline_count; i++)
+        for (uint8_t i = 0; i < VKFORGE_MAX_PIPELINES; i++)
         {{
-            vkDestroyPipeline(layout->device, layout->pipeline_buffer[i], 0);
+            if(layout->pipeline_buffer[i]) vkDestroyPipeline(layout->device, layout->pipeline_buffer[i], 0);
         }}
-        
+
         // Destroy all descriptor sets and layouts
         for (uint8_t i = 0; i < layout->descriptorset_layout_count; i++)
         {{
             vkDestroyDescriptorSetLayout(layout->device, layout->descriptorset_layout_buffer[i], 0);
         }}
-        
+
         // Destroy all pipeline layouts
-        for (uint8_t i = 0; i < layout->pipeline_layout_count; i++)
+        for (uint8_t i = 0; i < VKFORGE_MAX_PIPELINE_LAYOUTS; i++)
         {{
-            vkDestroyPipelineLayout(layout->device, layout->pipeline_layout_buffer[i], 0);
+            if(layout->pipeline_layout_buffer[i]) vkDestroyPipelineLayout(layout->device, layout->pipeline_layout_buffer[i], 0);
         }}
-        
+
         SDL_free(layout);
     }}
 }}
@@ -524,30 +544,42 @@ def CreateDescriptorSetLayoutBindings(ctx: VkForgeContext) -> str:
     content = """\
 static VkResult CreateDescriptorSetLayoutBindings(
     const VkForgeLayoutDescriptorSetLayoutDesign* set_design,
+    uint32_t binding_count,
     VkDescriptorSetLayoutBinding** out_bindings)
 {{
-    VkDescriptorSetLayoutBinding* bindings = (VkDescriptorSetLayoutBinding*)SDL_malloc(
-        sizeof(VkDescriptorSetLayoutBinding) * set_design->bind_design_count);
-    
-    if (!bindings)
+    if( binding_count )
     {{
-        SDL_LogError(0, "Failed to allocate memory for descriptor set bindings");
-        return VK_ERROR_OUT_OF_HOST_MEMORY;
+        VkDescriptorSetLayoutBinding* bindings = (VkDescriptorSetLayoutBinding*)SDL_malloc(
+            sizeof(VkDescriptorSetLayoutBinding) * binding_count);
+
+        if (!bindings)
+        {{
+            SDL_LogError(0, "Failed to allocate memory for descriptor set bindings");
+            return VK_ERROR_OUT_OF_HOST_MEMORY;
+        }}
+
+        SDL_memset(bindings, 0, sizeof(VkDescriptorSetLayoutBinding) * binding_count);
+
+        for (uint32_t j = 0; j < set_design->bind_design_count; j++)
+        {{
+            const VkForgeLayoutBindDesign* bind = set_design->bind_design_buffer[j];
+            if( !bind ) continue;
+
+            bindings[j] = (VkDescriptorSetLayoutBinding){{
+                .binding = j,
+                .descriptorType = bind->type,
+                .descriptorCount = bind->count,
+                .stageFlags = BuildStageFlags(bind)
+            }};
+        }}
+
+        *out_bindings = bindings;
+    }}
+    else
+    {{
+        *out_bindings = NULL;
     }}
 
-    for (uint32_t j = 0; j < set_design->bind_design_count; j++)
-    {{
-        const VkForgeLayoutBindDesign* bind = set_design->bind_design_buffer[j];
-        bindings[j] = (VkDescriptorSetLayoutBinding){{
-            .binding = j,
-            .descriptorType = bind ? bind->type : 0,
-            .descriptorCount = bind ? bind->count : 0,
-            .stageFlags = bind ? BuildStageFlags(bind) : 0,
-            .pImmutableSamplers = NULL
-        }};
-    }}
-
-    *out_bindings = bindings;
     return VK_SUCCESS;
 }}
 """
@@ -558,24 +590,37 @@ def CreateDescriptorSetLayout(ctx: VkForgeContext) -> str:
 static VkResult CreateDescriptorSetLayout(
     VkDevice device,
     const VkForgeLayoutDescriptorSetLayoutDesign* set_design,
-    VkDescriptorSetLayout* out_layout)
+    VkDescriptorSetLayout* out_dsetLayout)
 {{
-    VkDescriptorSetLayoutBinding* bindings = NULL;
-    VkResult result = CreateDescriptorSetLayoutBindings(set_design, &bindings);
-    if (result != VK_SUCCESS)
+    VkResult result = VK_ERROR_UNKNOWN;
+
+    if(set_design->bind_design_count)
     {{
-        return result;
+        uint32_t binding_count = CountDescriptorSetLayoutBindings(set_design);
+
+        VkDescriptorSetLayoutBinding* bindings = NULL;
+        result = CreateDescriptorSetLayoutBindings(set_design, binding_count, &bindings);
+
+        if (result != VK_SUCCESS)
+        {{
+            return result;
+        }}
+
+        VkDescriptorSetLayoutCreateInfo setLayoutInfo = {{
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .bindingCount = binding_count,
+            .pBindings = bindings
+        }};
+
+        result = vkCreateDescriptorSetLayout(device, &setLayoutInfo, NULL, out_dsetLayout);
+        if(bindings) SDL_free(bindings);
+    }}
+    else
+    {{
+        out_dsetLayout = VK_NULL_HANDLE;
     }}
 
-    VkDescriptorSetLayoutCreateInfo setLayoutInfo = {{
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .bindingCount = set_design->bind_design_count,
-        .pBindings = bindings
-    }};
-    
-    result = vkCreateDescriptorSetLayout(device, &setLayoutInfo, NULL, out_layout);
-    SDL_free(bindings);
-    
+
     return result;
 }}
 """
@@ -588,14 +633,6 @@ static VkResult CreatePipelineLayout(
     const VkForgeLayoutPipelineLayoutDesign* pipeline_design,
     uint32_t layout_index)
 {{
-    VkDescriptorSetLayout* setLayouts = (VkDescriptorSetLayout*)SDL_malloc(
-        sizeof(VkDescriptorSetLayout) * pipeline_design->descriptorset_layout_design_count);
-    
-    if (!setLayouts)
-    {{
-        SDL_LogError(0, "Failed to allocate memory for descriptor set layouts");
-        return VK_ERROR_OUT_OF_HOST_MEMORY;
-    }}
 
     if( layout->pipeline_layout_buffer[layout_index] != VK_NULL_HANDLE )
     {{
@@ -603,52 +640,88 @@ static VkResult CreatePipelineLayout(
         return VK_SUCCESS;
     }}
 
-    for (uint32_t i = 0; i < pipeline_design->descriptorset_layout_design_count; i++)
+    if (layout->pipeline_layout_count < VKFORGE_MAX_PIPELINE_LAYOUTS)
     {{
-        const VkForgeLayoutDescriptorSetLayoutDesign* set_design = 
-            pipeline_design->descriptorset_layout_design_buffer[i];
-        
-        VkResult result = CreateDescriptorSetLayout(layout->device, set_design, &setLayouts[i]);
+        VkDescriptorSetLayout* dsetLayouts = 0;
+
+        if( pipeline_design->descriptorset_layout_design_count )
+        {{
+            dsetLayouts = (VkDescriptorSetLayout*) SDL_malloc(
+                sizeof(VkDescriptorSetLayout) * pipeline_design->descriptorset_layout_design_count
+            );
+
+            if ( !dsetLayouts )
+            {{
+                SDL_LogError(0, "Failed to allocate memory for descriptor set layouts");
+                return VK_ERROR_OUT_OF_HOST_MEMORY;
+            }}
+
+            for (uint32_t i = 0; i < pipeline_design->descriptorset_layout_design_count; i++)
+            {{
+                const VkForgeLayoutDescriptorSetLayoutDesign* set_design =
+                    pipeline_design->descriptorset_layout_design_buffer[i];
+
+                if(set_design->bind_design_count)
+                {{
+                    VkResult result = CreateDescriptorSetLayout(layout->device, set_design, &dsetLayouts[i]);
+                    if (result != VK_SUCCESS)
+                    {{
+                        SDL_LogError(0, "Failed to create descriptor set layout");
+                        for (uint32_t j = 0; j < i; j++)
+                        {{
+                            vkDestroyDescriptorSetLayout(layout->device, dsetLayouts[j], NULL);
+                        }}
+                        SDL_free(dsetLayouts);
+                        return result;
+                    }}
+
+                    // Store the created descriptor set layout
+                    if(layout->descriptorset_layout_count < VKFORGE_MAX_DESCRIPTORSET_LAYOUTS)
+                    {{
+                        if(dsetLayouts[i])
+                            layout->descriptorset_layout_buffer[layout->descriptorset_layout_count++] = dsetLayouts[i];
+                    }}
+                    else
+                    {{
+                        SDL_LogError(0, "Can not store newly created DescriptorSet. VKFORGE_MAX_DESCRIPTORSET_LAYOUTS exceeded!");
+                        return VK_ERROR_UNKNOWN;
+                    }}
+                }}
+                else
+                {{
+                    dsetLayouts[i] = VK_NULL_HANDLE;
+                }}
+            }}
+        }}
+
+
+
+        VkPipelineLayoutCreateInfo layoutInfo = {{
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .setLayoutCount = pipeline_design->descriptorset_layout_design_count,
+            .pSetLayouts = dsetLayouts,
+            .pushConstantRangeCount = 0,
+            .pPushConstantRanges = NULL
+        }};
+
+        VkPipelineLayout pipelineLayout;
+        VkResult result = vkCreatePipelineLayout(layout->device, &layoutInfo, NULL, &pipelineLayout);
+        SDL_free(dsetLayouts);
+
         if (result != VK_SUCCESS)
         {{
-            SDL_LogError(0, "Failed to create descriptor set layout");
-            for (uint32_t j = 0; j < i; j++)
-            {{
-                vkDestroyDescriptorSetLayout(layout->device, setLayouts[j], NULL);
-            }}
-            SDL_free(setLayouts);
+            SDL_LogError(0, "Failed to create pipeline layout");
             return result;
         }}
 
-        // Store the created descriptor set layout
-        if (layout->descriptorset_layout_count < VKFORGE_MAX_DESCRIPTORSET_LAYOUTS)
-        {{
-            layout->descriptorset_layout_buffer[layout->descriptorset_layout_count++] = setLayouts[i];
-        }}
+        // Store the created pipeline layout
+        layout->pipeline_layout_buffer[layout_index] = pipelineLayout;
+        layout->pipeline_layout_count ++;
     }}
-
-    VkPipelineLayoutCreateInfo layoutInfo = {{
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = pipeline_design->descriptorset_layout_design_count,
-        .pSetLayouts = setLayouts,
-        .pushConstantRangeCount = 0,
-        .pPushConstantRanges = NULL
-    }};
-    
-    VkPipelineLayout pipelineLayout;
-    VkResult result = vkCreatePipelineLayout(layout->device, &layoutInfo, NULL, &pipelineLayout);
-    SDL_free(setLayouts);
-    
-    if (result != VK_SUCCESS)
+    else
     {{
-        SDL_LogError(0, "Failed to create pipeline layout");
-        return result;
-    }}
-
-    // Store the created pipeline layout
-    if (layout->pipeline_layout_count < VKFORGE_MAX_PIPELINE_LAYOUTS)
-    {{
-        layout->pipeline_layout_buffer[layout->pipeline_layout_count++] = pipelineLayout;
+        SDL_LogError(0, "Pipeline Layout Buffer exceeded when attempted to create new pipeline layout");
+        return VK_ERROR_UNKNOWN;
     }}
 
     return VK_SUCCESS;
@@ -678,49 +751,67 @@ VkResult VkForge_CreatePipeline(VkForgeLayout* layout, const char* pipeline_name
         return VK_SUCCESS;
     }}
 
-    // Find the pipeline layout index in the global design
-    uint32_t layout_index = FindPipelineLayoutIndex(pipeline_name);
-    if (layout_index == UINT32_MAX)
+    if (layout->pipeline_count < VKFORGE_MAX_PIPELINES)
     {{
-        SDL_LogError(0, "Pipeline layout not found for %s", pipeline_name);
-        return VK_ERROR_UNKNOWN;
-    }}
 
-    // Create pipeline layout if it doesn't exist
-    if (layout->pipeline_layout_count <= layout_index)
-    {{
-        const VkForgeLayoutPipelineLayoutDesign* pipeline_design = 
-            VKFORGE_REFERENCED_LAYOUT_DESIGN.pipeline_layout_design_buffer[layout_index];
-        
-        VkResult result = CreatePipelineLayout(layout, pipeline_design, layout_index);
-        if (result != VK_SUCCESS)
+        // Find the pipeline layout index in the global design
+        uint32_t layout_index = FindPipelineLayoutIndex(pipeline_name);
+        if (layout_index == UINT32_MAX)
         {{
-            return result;
+            SDL_LogError(0, "Pipeline layout not found for %s", pipeline_name);
+            return VK_ERROR_UNKNOWN;
         }}
-    }}
 
-    // Create the pipeline
-    VkPipeline pipeline = pipeline_func->CreatePipelineForFunc(
-        NULL, // allocator
-        NULL, // next
-        layout->device,
-        layout->pipeline_layout_buffer[layout_index]
-    );
+        // Create pipeline layout if it doesn't exist
+        if (layout->pipeline_layout_buffer[layout_index] == VK_NULL_HANDLE)
+        {{
+            const VkForgeLayoutPipelineLayoutDesign* pipeline_design =
+                VKFORGE_REFERENCED_LAYOUT_DESIGN.pipeline_layout_design_buffer[layout_index];
 
-    if (pipeline == VK_NULL_HANDLE)
-    {{
-        SDL_LogError(0, "Failed to create pipeline %s", pipeline_name);
-        return VK_ERROR_UNKNOWN;
-    }}
+            VkResult result = CreatePipelineLayout(layout, pipeline_design, layout_index);
+            if (result != VK_SUCCESS)
+            {{
+                return result;
+            }}
+        }}
 
-    // Store the pipeline at its predefined index
-    if (pipeline_func->pipeline_index < VKFORGE_MAX_PIPELINES)
-    {{
+        /// DYNAMIC RENDERING REQUIRED STRUCTURE ///
+        VkSurfaceFormatKHR surfaceFormat = VkForge_GetSurfaceFormat(
+            layout->surface,
+            layout->physical_device,
+            VKFORGE_DEFAULT_FORMAT
+        );
+
+        VkPipelineRenderingCreateInfo renderingInfo = {{0}};
+        renderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+        renderingInfo.viewMask = 0;
+        renderingInfo.colorAttachmentCount = 1;
+        renderingInfo.pColorAttachmentFormats = &surfaceFormat.format;
+
+        ///*************************************///
+
+        // Create the pipeline
+        VkPipeline pipeline = pipeline_func->CreatePipelineForFunc(
+            NULL, // allocator
+            &renderingInfo, // next Vulkan 1.3 dynamic rendering
+            layout->device,
+            layout->pipeline_layout_buffer[layout_index]
+        );
+
+        if (pipeline == VK_NULL_HANDLE)
+        {{
+            SDL_LogError(0, "Failed to create pipeline %s", pipeline_name);
+            return VK_ERROR_UNKNOWN;
+        }}
+
+        // Store the pipeline at its predefined index
         layout->pipeline_buffer[pipeline_func->pipeline_index] = pipeline;
-        if (layout->pipeline_count <= pipeline_func->pipeline_index)
-        {{
-            layout->pipeline_count = pipeline_func->pipeline_index + 1;
-        }}
+        layout->pipeline_count ++;
+    }}
+    else
+    {{
+        SDL_LogError(0, "Pipeline Buffer exceeded when attempted to create new pipeline %s", pipeline_name);
+        return VK_ERROR_UNKNOWN;
     }}
 
     return VK_SUCCESS;
@@ -761,6 +852,26 @@ void VkForge_BindPipeline(VkForgeLayout* layout, const char* pipeline_name, VkCo
 """
     return content.format()
 
+def CreateCountDescriptorSetBinding(ctx: VkForgeContext) -> str:
+    content = """\
+static uint32_t CountDescriptorSetLayoutBindings(const VkForgeLayoutDescriptorSetLayoutDesign* set_design)
+{{
+    if(set_design->bind_design_count)
+    {{
+        uint32_t count = 0;
+
+        for (uint32_t j = 0; j < set_design->bind_design_count; j++)
+        {{
+            const VkForgeLayoutBindDesign* bind = set_design->bind_design_buffer[j];
+            if(bind) count ++;
+        }}
+    }}
+
+    return 0;
+}}
+"""
+    return content.format()
+
 
 def GetLayoutStrings(ctx: VkForgeContext):
     return [
@@ -772,9 +883,11 @@ def GetLayoutStrings(ctx: VkForgeContext):
         CreateFindPipelineFunction(ctx),
         CreateFindPipelineLayoutIndex(ctx),
         CreateBuildStageFlags(ctx),
+        CreateCountDescriptorSetBinding(ctx),
         CreateDescriptorSetLayoutBindings(ctx),
         CreateDescriptorSetLayout(ctx),
         CreatePipelineLayout(ctx),
         CreateForgePipeline(ctx),
-        CreateBindPipeline(ctx)
+        CreateBindPipeline(ctx),
+        
     ]

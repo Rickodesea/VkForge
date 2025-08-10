@@ -45,8 +45,8 @@ void VkForge_CreateDevice(VkPhysicalDevice       physical_device,
     VkDevice*              retDevice,
     VkQueue*               retQueue);
 
-void VkForge_CreateSwapchain(VkPhysicalDevice       physical_device,
-    VkSurfaceKHR           surface,
+void VkForge_CreateSwapchain(VkSurfaceKHR           surface,
+    VkPhysicalDevice       physical_device,
     VkDevice               device,
     VkSwapchainKHR         old_swapchain,
     VkFormat               req_format,
@@ -108,19 +108,19 @@ uint32_t VkForge_GetMemoryTypeIndex(VkPhysicalDevice      physical_device,
     uint32_t              typeFilter,
     VkMemoryPropertyFlags properties);
 
-uint32_t VkForge_GetSwapchainSize(VkPhysicalDevice physical_device,
-    VkSurfaceKHR     surface,
+uint32_t VkForge_GetSwapchainSize(VkSurfaceKHR     surface,
+    VkPhysicalDevice physical_device,
     uint32_t         req_size);
 
-VkSurfaceFormatKHR VkForge_GetSurfaceFormat(VkPhysicalDevice physical_device,
-    VkSurfaceKHR     surface,
+VkSurfaceFormatKHR VkForge_GetSurfaceFormat(VkSurfaceKHR     surface,
+    VkPhysicalDevice physical_device,
     VkFormat         req_format);
 
-VkSurfaceCapabilitiesKHR VkForge_GetSurfaceCapabilities(VkPhysicalDevice physical_device,
-    VkSurfaceKHR     surface);
+VkSurfaceCapabilitiesKHR VkForge_GetSurfaceCapabilities(VkSurfaceKHR     surface,
+    VkPhysicalDevice physical_device);
 
-VkPresentModeKHR VkForge_GetPresentMode(VkPhysicalDevice physical_device,
-    VkSurfaceKHR     surface,
+VkPresentModeKHR VkForge_GetPresentMode(VkSurfaceKHR     surface,
+    VkPhysicalDevice physical_device,
     VkPresentModeKHR req_mode);
 
 void VkForge_CmdBufferBarrier(VkCommandBuffer cmdbuf,
@@ -277,7 +277,7 @@ void VkForge_CmdCopyBuffer(VkCommandBuffer cmdBuf,
 VkCommandBuffer VkForge_AllocateCommandBuffer(VkDevice      device,
     VkCommandPool pool);
 
-VkForgeLayout* VkForge_CreateLayout(VkDevice device);
+VkForgeLayout* VkForge_CreateLayout(VkSurfaceKHR surface, VkPhysicalDevice physical_device, VkDevice device);
 
 void VkForge_DestroyLayout(VkForgeLayout* layout);
 
