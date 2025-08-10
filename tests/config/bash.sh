@@ -1,0 +1,1 @@
+vkforge vkforge.yml --source-dir build/config/source --build-dir build/config --copy-shader-dir build/config/shaders
