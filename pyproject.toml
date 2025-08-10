@@ -1,6 +1,6 @@
 [project]
 name = "vkforge"
-version = "0.5.4"
+version = "0.5.5"
 description = "VkForge: A Vulkan User-End API Implementation Generator for Renderer Development"
 authors = [
     { name = "Alrick Grandison", email = "alrickgrandison@gmail.com" }
