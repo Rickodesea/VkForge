@@ -618,6 +618,11 @@ class VkForgeModel(BaseModel):
         "afterwards."
     )
 
+    CompileOnce: Optional[List[str]] = Field(
+        default=None,
+        descriptions="List of shader source path you do not want to be re-compiled on each VkForge call. Path match path under Pipeline of config."
+    )
+
     InstanceCreateInfo: Optional[VkInstanceCreateInfoModel] = Field(
         default_factory=VkInstanceCreateInfoModel, description="Instance creation info."
     )

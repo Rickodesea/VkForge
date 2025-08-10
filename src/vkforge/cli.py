@@ -92,7 +92,13 @@ def main():
     parser.add_argument(
         "--build-dir",
         default="build",
-        help="The build directory of your project. VkForge can share your project's build directory or it can point to a unique build directory for VkForge. Think of CMake's build directory.",
+        help="The build directory of your project. VkForge can share your project's build directory or it can point to a unique build directory for VkForge. Think of CMake's build directory. This is a Generic Build Directory. You can specify a more specific build directory.",
+    )
+
+    parser.add_argument(
+        "--copy-shader-dir",
+        default=None,
+        help="This directory is specific to Shaders that VkForge compiles. VkForge stores compile shaders in --build-dir. However, if you want to store copies in another location then use this.",
     )
 
     parser.add_argument(
@@ -106,7 +112,7 @@ def main():
 
     forgeModel = VkForgeModel(**raw_data)
     shaderData = load_shader_data(
-        args.config_roots, args.build_dir, forgeModel
+        args.config_roots, args.build_dir, args.copy_shader_dir, forgeModel
     )
     layout = create_pipeline_layouts(forgeModel, shaderData)
 

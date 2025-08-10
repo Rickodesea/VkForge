@@ -11,6 +11,10 @@ UserDefined:
 GenerateOnce:
 - CMakeLists.txt
 
+CompileOnce:
+- default.vert
+- default.frag
+
 InstanceCreateInfo:
   useValidationFeatureEnableBestPracticesEXT: true
 

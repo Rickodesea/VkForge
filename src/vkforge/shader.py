@@ -6,6 +6,7 @@ import json
 import subprocess
 from .schema import VkForgeModel
 from .mappings import *
+import shutil
 
 def find_shader(roots: List[str], id: str) -> Path:
     file_path = Path(id)
@@ -73,7 +74,7 @@ def disassemble_shader(build_dir: str, shader_path: Path, mode: str) -> Path:
     return output_path
 
 
-def compile_shader(build_dir: str, shader_path: Path) -> Path:
+def compile_shader(build_dir: str, copy_dir: str, shader_path: Path, fm: VkForgeModel) -> Path:
     try:
         subprocess.run(
             ["glslangValidator", "-h"],
@@ -92,7 +93,12 @@ def compile_shader(build_dir: str, shader_path: Path) -> Path:
     build_dir.mkdir(parents=True, exist_ok=True)
 
     # Compose output path
-    output_file = build_dir / (shader_path.name + ".spv")
+    output_file: Path = build_dir / (shader_path.name + ".spv")
+
+    if fm.CompileOnce:
+        if shader_path.name in fm.CompileOnce and output_file.exists():
+            print(f"SKIPPED (CompileOnce): {shader_path.name}")
+            return output_file
 
     # Compile GLSL to SPIR-V
     result = subprocess.run(
@@ -109,7 +115,13 @@ def compile_shader(build_dir: str, shader_path: Path) -> Path:
             f"stderr:\n{result.stderr}"
         )
     
-    print(f"COMPILED: {shader_path.name}")
+    print(f"COMPILED: {shader_path.name} -> {str(output_file)}")
+
+    if copy_dir:
+        copy_to = Path(copy_dir) / (shader_path.name + ".spv")
+        copy_to.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(output_file, copy_to)
+        print(f"COPIED: -> {copy_to}")
 
     return output_file
 
@@ -210,7 +222,7 @@ def validate_shader_combination(build_dir: str, shader_list: List[dict]):
 
 
 def load_shader_data(
-    roots: List[str], build_dir: str, fm: VkForgeModel
+    roots: List[str], build_dir: str, copy_dir: str, fm: VkForgeModel
 ):
     shader_list: Dict[dict] = {}
     shader_combinations: Dict[str, List[list]] = {}
@@ -232,7 +244,7 @@ def load_shader_data(
 
                 if shader_is_source(shader_ext):
                     shader_source_path = shader_path
-                    shader_binary_path = compile_shader(build_dir, shader_path)
+                    shader_binary_path = compile_shader(build_dir, copy_dir, shader_path, fm)
                     spirv_reflect = reflect_shader(shader_binary_path)
                     entrypoint = get_shader_entrypoint(
                         id, spirv_reflect
