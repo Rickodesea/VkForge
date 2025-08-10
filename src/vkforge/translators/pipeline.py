@@ -58,7 +58,7 @@ def BuildInputBinding(
     binding += "\t" * indent + "{\n"
 
     for i, inputBinding in enumerate(pipelineModule.VertexInputBindingDescription):
-        rate = inputBinding.inputRate
+        rate = map_value(INPUT_RATE_MAP, inputBinding.input_rate)
         if inputBinding.stride_kind == 'TYPE':
             stride = f"sizeof({inputBinding.stride})"
         else:
@@ -68,7 +68,7 @@ def BuildInputBinding(
 
         binding += "\t" * indent3 + f".binding = {i},\n"
         binding += "\t" * indent3 + f".stride = {stride},\n"
-        binding += "\t" * indent3 + f".binding = {map_value(INPUT_RATE_MAP, rate)},\n"
+        binding += "\t" * indent3 + f".inputRate = {rate},\n"
 
         binding += "\t" * indent2 + "},\n"
     
@@ -87,7 +87,7 @@ def GetInputAttributeList(
     binding_list = []
     
     for i, inputBinding in enumerate(pipelineModule.VertexInputBindingDescription):
-        binding_list.append((i, inputBinding.first_location, inputBinding.inputRate, inputBinding.stride_kind))
+        binding_list.append((i, inputBinding.first_location, inputBinding.input_rate, inputBinding.stride_kind))
     
     # Handle case where first_location 0 is not in the list
     if not any(b[1] == 0 for b in binding_list):

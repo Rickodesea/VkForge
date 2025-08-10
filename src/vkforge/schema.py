@@ -28,7 +28,7 @@
 # and support other types of implementation of Vulkan.
 
 from pydantic import (
-    BaseModel, Field, field_validator, model_validator, PrivateAttr, ConfigDict
+    BaseModel, Field, field_validator, model_validator, PrivateAttr
 )
 from typing import List, Optional, Literal, Union
 import re
@@ -204,14 +204,19 @@ class VkVertexInputBindingDescriptionModel(BaseModel):
         ...,
         description="User defined type name, `sizeof(...)` string, or literal integer stride size.",
     )
-    _stride_kind: Optional[Literal["TYPE", "SIZEOF", "INT"]] = PrivateAttr(default=None)
+    _stride_kind: Optional[Literal["TYPE", "SIZEOF", "INT", "CALC"]] = PrivateAttr(default=None)
 
     stride_members: Optional[List[str]] = Field(
         default=None,
         description="List of all members of the type in declaration order. If you omit this, then VkForge will attempt to calculate the offset. Otherwise, VkForge will use the listed members and the type to get the offset. The name must match the type used in the stride",
     )
-    inputRate: Optional[Literal["vertex", "instance"]] = Field(
-        default="vertex", description="Input rate for the binding."
+    input_rate: Optional[Literal[
+        "VK_VERTEX_INPUT_RATE_VERTEX",
+        "VK_VERTEX_INPUT_RATE_INSTANCE",
+        "vertex", 
+        "instance"
+    ]] = Field(
+        default="VK_VERTEX_INPUT_RATE_VERTEX", description="Input rate for the binding."
     )
     first_location: int = Field(
         ..., description="First location index in the shader input."
@@ -225,25 +230,48 @@ class VkVertexInputBindingDescriptionModel(BaseModel):
     def validate_stride_kind(self):
         if isinstance(self.stride, int):
             self._stride_kind = "INT"
+
         elif isinstance(self.stride, str):
             s = self.stride.strip()
-            if re.fullmatch(r"sizeof\s*\(?\s*\w+\s*\)?", s):
+
+            # Match SIZEOF
+            sizeof_pattern = r"sizeof\s*\(?\s*\w+\s*\)?"
+            type_pattern = r"[A-Za-z][A-Za-z0-9_]*"
+            int_pattern = r"\d+"
+
+            # Check pure SIZEOF
+            if re.fullmatch(sizeof_pattern, s):
                 self._stride_kind = "SIZEOF"
-            elif re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", s):
+
+            # Check pure TYPE
+            elif re.fullmatch(type_pattern, s):
                 self._stride_kind = "TYPE"
+
+            # Check CALC:
+            # starts with int or SIZEOF, followed by an operator (+ - * /), then rest
+            elif re.fullmatch(
+                rf"(?:{int_pattern}|{sizeof_pattern})\s*[\%\+\-\*/]\s*.+", s
+            ):
+                self._stride_kind = "CALC"
+
             else:
                 raise ValueError(
-                    f"Invalid stride string: '{self.stride}'. Must be sizeof(Type) or valid C type name."
+                    f"Invalid stride string: '{self.stride}'. "
+                    "Must be sizeof(Type), valid C type name, integer, "
+                    "or calculation starting with integer/SIZEOF."
                 )
+
         else:
             raise ValueError(f"Invalid stride type: {type(self.stride)}")
+
         return self
+
 
     @model_validator(mode="after")
     def validate_stride_members(self):
         if self.stride_members is not None and self._stride_kind != "TYPE":
             raise ValueError(
-                "If stride_members is provided, stride must be a typenot a literal int or sizeof(...)."
+                "If stride_members is provided, stride must be a typenot a literal int or sizeof(...) or expression. It must be a Type!"
             )
         return self
 
@@ -557,6 +585,10 @@ class VkPipelineModel(BaseModel):
 
 
 class VkForgeModel(BaseModel):
+    model_config = {
+        "extra": "forbid",
+    }
+
     ID: Literal[
         "VkForge 0.5"
     ] = Field(

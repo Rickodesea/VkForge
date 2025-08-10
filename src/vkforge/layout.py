@@ -154,7 +154,7 @@ def create_pipeline_descriptorset_layouts(shader_groups: Dict, shader_dsets: Dic
         pipelines_dset_layouts[pipeline_name] = dset_layouts
     return pipelines_dset_layouts
 
-def optimize_pipeline_layouts(data: dict) -> dict:
+def optimize_pipeline_layouts(fm: VkForgeModel, data: dict) -> dict:
     def fill_bind_slots(bind:int, type:str, count:int, stages:set, bind_slots:List[tuple]):
         if bind < len(bind_slots):
             if bind_slots[bind]:
@@ -232,13 +232,21 @@ def optimize_pipeline_layouts(data: dict) -> dict:
     if current:
         layouts.append(current)
 
+    # no layout mean no shader had descriptorset
+    # therefore create blank pipline layout and assign all pipeline to it
+    if not layouts: 
+        pipeline_layout = [[None]]
+        layouts.append(pipeline_layout)
+        for pipeline in fm.Pipeline:
+            references[pipeline.name] = 0 # only one pipeline layout
+
     return {
         LAYOUT.LAYOUTS:    layouts,
         LAYOUT.REFERENCES: references
     }
 
 
-def combine_pipeline_descriptorset_layouts(pipeline_dset_layouts_dict: Dict[str, List]):
+def combine_pipeline_descriptorset_layouts(fm: VkForgeModel, pipeline_dset_layouts_dict: Dict[str, List]):
     layouts = {}
     references = {}
 
@@ -259,7 +267,7 @@ def combine_pipeline_descriptorset_layouts(pipeline_dset_layouts_dict: Dict[str,
         LAYOUT.DSET_LAYOUT: layouts,
         LAYOUT.DSET_REF: references
     }
-    pipeline_layouts = optimize_pipeline_layouts(pipeline_descriptorset_layouts)
+    pipeline_layouts = optimize_pipeline_layouts(fm, pipeline_descriptorset_layouts)
 
     return {
         LAYOUT.RAW_LAYOUT: pipeline_descriptorset_layouts,
@@ -282,4 +290,4 @@ def create_pipeline_layouts(fm: VkForgeModel, shaders: dict):
     check_for_errors_group_descriptorsets(shaders[SHADER.COMBO], shader_dsets)
 
     pipeline_dset_layouts_dict = create_pipeline_descriptorset_layouts(shaders[SHADER.COMBO], shader_dsets)
-    return combine_pipeline_descriptorset_layouts(pipeline_dset_layouts_dict)
+    return combine_pipeline_descriptorset_layouts(fm, pipeline_dset_layouts_dict)

@@ -1,0 +1,1 @@
+vkforge vkforge.yml --source-dir VkForge --build-dir build

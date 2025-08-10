@@ -7,9 +7,7 @@ Pipeline:
   - name: MyDefaultPipeline
     ShaderModule:
       - path: vert.spv
-        mode: vert
       - path: frag.spv
-        mode: frag
     VertexInputBindingDescription:
       - stride: Vertex
         first_location: 0
