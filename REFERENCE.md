@@ -46,8 +46,8 @@ struct VkForgeRender {
     
     // Rendering state
     VkExtent2D            extent;
-    VkCommandBuffer       copyCmdBuf;
-    VkCommandBuffer       drawCmdBuf;
+    VkCommandBuffer       cmdbuf_copy;
+    VkCommandBuffer       cmdbuf_draw;
     VkForgeRenderCallback copyCallback;
     VkForgeRenderCallback drawCallback;
     

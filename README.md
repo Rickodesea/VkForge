@@ -89,8 +89,8 @@ vkforge config.yml --source-dir src --build-dir build
 #include "vkforge_funcdecls.h"
 
 void DrawCallback(VkForgeRender render) {
-    VkForge_BindPipeline(render.userData, "MainPipeline", render.drawCmdBuf);
-    vkCmdDraw(render.drawCmdBuf, 3, 1, 0, 0);
+    VkForge_BindPipeline(render.userData, "MainPipeline", render.cmdbuf_draw);
+    vkCmdDraw(render.cmdbuf_draw, 3, 1, 0, 0);
 }
 ```
 
