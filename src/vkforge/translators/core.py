@@ -719,10 +719,10 @@ VkForgeRender* VkForge_CreateRender
         &render->swapchain_imgviews
     );
 
-    render->acquireImageFence = VkForge_CreateFence(device);
-    render->submitQueueFence  = VkForge_CreateFence(device);
-    render->copySemaphore     = VkForge_CreateSemaphore(device);
-    render->drawSemaphore     = VkForge_CreateSemaphore(device);
+    render->fence_acquire  = VkForge_CreateFence(device);
+    render->fence_submit   = VkForge_CreateFence(device);
+    render->semaphore_copy = VkForge_CreateSemaphore(device);
+    render->semaphore_draw = VkForge_CreateSemaphore(device);
 
     VkSurfaceCapabilitiesKHR surface_cap = VkForge_GetSurfaceCapabilities(surface, physical_device);
     render->extent                       = surface_cap.currentExtent;
@@ -743,8 +743,8 @@ VkForgeRender* VkForge_CreateRender
         exit(1);
     }}
 
-    render->copyCmdBuf = cmdbufs[0];
-    render->drawCmdBuf = cmdbufs[1];
+    render->cmdbuf_copy = cmdbufs[0];
+    render->cmdbuf_draw = cmdbufs[1];
 
     render->status = VKFORGE_RENDER_READY;
 
@@ -813,13 +813,13 @@ void VkForge_DestroyRender(VkForgeRender* r)
         vkDestroySwapchainKHR(r->device, r->swapchain, 0);
     }}
 
-    VkCommandBuffer cmdbufs[2] = {{r->copyCmdBuf, r->drawCmdBuf}};
+    VkCommandBuffer cmdbufs[2] = {{r->cmdbuf_copy, r->cmdbuf_draw}};
     vkFreeCommandBuffers(r->device, r->cmdPool, 2, cmdbufs);
 
-    vkDestroyFence(r->device, r->acquireImageFence, 0);
-    vkDestroyFence(r->device, r->submitQueueFence, 0);
-    vkDestroySemaphore(r->device, r->copySemaphore, 0);
-    vkDestroySemaphore(r->device, r->drawSemaphore, 0);
+    vkDestroyFence(r->device, r->fence_acquire, 0);
+    vkDestroyFence(r->device, r->fence_submit, 0);
+    vkDestroySemaphore(r->device, r->semaphore_copy, 0);
+    vkDestroySemaphore(r->device, r->semaphore_draw, 0);
 
     SDL_free(r);
 }}
@@ -838,11 +838,11 @@ void VkForge_UpdateRender(VkForgeRender* render)
 
     if( VKFORGE_RENDER_COPYING == render->status )
     {{
-        VkForge_BeginCommandBuffer(render->copyCmdBuf);
+        VkForge_BeginCommandBuffer(render->cmdbuf_copy);
 
         render->copyCallback(*render);
 
-        VkForge_EndCommandBuffer(render->copyCmdBuf);
+        VkForge_EndCommandBuffer(render->cmdbuf_copy);
 
         render->status = VKFORGE_RENDER_ACQING_IMG;
     }}
@@ -855,18 +855,18 @@ void VkForge_UpdateRender(VkForgeRender* render)
             render->swapchain,
             1000000 / 60 / 16,
             VK_NULL_HANDLE,
-            render->acquireImageFence,
+            render->fence_acquire,
             &render->index
         );
 
         if( VK_SUCCESS == result )
         {{
-            render->acquireSuccessful = true;
+            render->success_acquire = true;
         }}
         else if( VK_SUBOPTIMAL_KHR == result || VK_ERROR_OUT_OF_DATE_KHR == result )
         {{
             SDL_LogError(0, "Failed to Acquire Image due to %s. The swapchain will be re-created.", VkForge_StringifyResult(result));
-            render->acquireSuccessful = false;
+            render->success_acquire = false;
         }}
         else
         {{
@@ -879,10 +879,10 @@ void VkForge_UpdateRender(VkForgeRender* render)
 
     if( VKFORGE_RENDER_PENGING_ACQ_IMG == render->status )
     {{
-        if( VK_SUCCESS == vkGetFenceStatus(render->device, render->acquireImageFence)  )
+        if( VK_SUCCESS == vkGetFenceStatus(render->device, render->fence_acquire)  )
         {{
-            vkResetFences(render->device, 1, &render->acquireImageFence);
-            if( render->acquireSuccessful )
+            vkResetFences(render->device, 1, &render->fence_acquire);
+            if( render->success_acquire )
                 render->status = VKFORGE_RENDER_DRAWING;
             else
                 render->status = VKFORGE_RENDER_RECREATE;
@@ -894,30 +894,30 @@ void VkForge_UpdateRender(VkForgeRender* render)
         VkForgeImagePair imgPair = {{ render->swapchain_images[render->index], render->swapchain_imgviews[render->index] }};
         VkForgeQuad quad = {{ 0, 0, render->extent.width, render->extent.height }};
 
-        VkForge_BeginCommandBuffer(render->drawCmdBuf);
+        VkForge_BeginCommandBuffer(render->cmdbuf_draw);
 
-        VkForge_CmdBeginRendering(render->drawCmdBuf, imgPair, render->color, quad);
+        VkForge_CmdBeginRendering(render->cmdbuf_draw, imgPair, render->color, quad);
 
         render->drawCallback(*render);
 
-        VkForge_CmdEndRendering(render->drawCmdBuf, imgPair);
+        VkForge_CmdEndRendering(render->cmdbuf_draw, imgPair);
 
-        VkForge_EndCommandBuffer(render->drawCmdBuf);
+        VkForge_EndCommandBuffer(render->cmdbuf_draw);
 
         render->status = VKFORGE_RENDER_SUBMITTING;
     }}
 
     if( VKFORGE_RENDER_SUBMITTING == render->status )
     {{
-        VkForge_QueueSubmit(render->queue, render->copyCmdBuf, 0, 0, render->copySemaphore, 0);
+        VkForge_QueueSubmit(render->queue, render->cmdbuf_copy, 0, 0, render->semaphore_copy, 0);
         VkForge_QueueSubmit
         (
             render->queue,
-            render->drawCmdBuf,
+            render->cmdbuf_draw,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
-            render->copySemaphore,
-            render->drawSemaphore,
-            render->submitQueueFence
+            render->semaphore_copy,
+            render->semaphore_draw,
+            render->fence_submit
         );
 
         VkResult result = VkForge_QueuePresent
@@ -925,17 +925,17 @@ void VkForge_UpdateRender(VkForgeRender* render)
             render->queue, 
             render->swapchain, 
             render->index, 
-            render->drawSemaphore
+            render->semaphore_draw
         );
 
         if( VK_SUCCESS == result )
         {{
-            render->presentSuccessful = true;
+            render->success_present = true;
             render->swapchainRecreationCount = 0; // reset swapchain creation count once there is a successful present.
         }}
         else if( VK_SUBOPTIMAL_KHR == result || VK_ERROR_OUT_OF_DATE_KHR == result )
         {{
-            render->presentSuccessful = false;
+            render->success_present = false;
             SDL_LogError(0, "Failed to Present Queue due to %s. %d The swapchain will be re-created.", counter++, VkForge_StringifyResult(result));
         }}
         else
@@ -949,11 +949,11 @@ void VkForge_UpdateRender(VkForgeRender* render)
 
     if( VKFORGE_RENDER_PENDING_SUBMIT == render->status )
     {{
-        if( VK_SUCCESS == vkGetFenceStatus(render->device, render->submitQueueFence) )
+        if( VK_SUCCESS == vkGetFenceStatus(render->device, render->fence_submit) )
         {{
-            vkResetFences(render->device, 1, &render->submitQueueFence);
+            vkResetFences(render->device, 1, &render->fence_submit);
 
-            if( render->presentSuccessful )
+            if( render->success_present )
                 render->status = VKFORGE_RENDER_READY;
             else
                 render->status = VKFORGE_RENDER_RECREATE;

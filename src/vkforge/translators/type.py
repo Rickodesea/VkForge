@@ -162,8 +162,8 @@ struct VkForgeRender
     VkQueue               queue;
     VkCommandPool         cmdPool;
     VkExtent2D            extent;
-    VkCommandBuffer       copyCmdBuf;
-    VkCommandBuffer       drawCmdBuf;
+    VkCommandBuffer       cmdbuf_copy;
+    VkCommandBuffer       cmdbuf_draw;
     VkForgeRenderCallback copyCallback;
     VkForgeRenderCallback drawCallback;
     VkFormat              req_format;
@@ -174,15 +174,15 @@ struct VkForgeRender
     VkImage*              swapchain_images;
     VkImageView*          swapchain_imgviews;
     uint32_t              index;
-    VkFence               acquireImageFence;
-    VkFence               submitQueueFence;
-    VkSemaphore           copySemaphore;
-    VkSemaphore           drawSemaphore;
+    VkFence               fence_acquire;
+    VkFence               fence_submit;
+    VkSemaphore           semaphore_copy;
+    VkSemaphore           semaphore_draw;
     const char*           color;
     VkForgeRenderStatus   status;
     void*                 userData;
-    bool                  acquireSuccessful;
-    bool                  presentSuccessful;
+    bool                  success_acquire;
+    bool                  success_present;
     uint16_t              swapchainRecreationCount; //prevents a loop of recreating the swapchain
 }};
 """
@@ -219,6 +219,18 @@ struct VkForgeImagePair
 """
     return content.format()
 
+def CreatePixelFormatPair(ctx: VkForgeContext):
+    content = """\
+typedef struct VkForgePixelFormatPair  VkForgePixelFormatPair;
+
+struct VkForgePixelFormatPair
+{{
+    Uint32 sdl_format;
+    VkFormat vk_format;
+}};
+"""
+    return content.format()
+
 def GetTypeStrings(ctx: VkForgeContext):
     return [
         CreateDefaults(ctx),
@@ -231,6 +243,7 @@ def GetTypeStrings(ctx: VkForgeContext):
         CreateRender(ctx),
         CreateDestroyCallback(ctx),
         CreateQuad(ctx),
-        CreateImagePair(ctx)
+        CreateImagePair(ctx),
+        CreatePixelFormatPair(ctx)
         
     ]

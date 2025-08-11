@@ -1,98 +1,17 @@
-static VkResult CreatePipelineLayout(
-    VkForgeLayout* layout,
-    const VkForgeLayoutPipelineLayoutDesign* pipeline_design,
-    uint32_t layout_index)
+VkForgePixelFormatPair VkForge_GetPixelFormatFromString(const char* order)
 {
+    // Default: ABGR (matches VK_FORMAT_R8G8B8A8_UNORM)
+    VkForgePixelFormatPair fmt = { SDL_PIXELFORMAT_ABGR8888, VK_FORMAT_R8G8B8A8_UNORM };
 
-    if( layout->pipeline_layout_buffer[layout_index] != VK_NULL_HANDLE )
-    {
-        SDL_LogError(0, "Pipeline Layout already created");
-        return VK_SUCCESS;
-    }
+    if (!order) return fmt;
 
-    if (layout->pipeline_layout_count < VKFORGE_MAX_PIPELINE_LAYOUTS)
-    {
-        VkDescriptorSetLayout* dsetLayouts = 0;
+    if      (SDL_strcasecmp(order, "RGBA") == 0) fmt = (VkForgePixelFormatPair){ SDL_PIXELFORMAT_RGBA8888, VK_FORMAT_R8G8B8A8_UNORM };
+    else if (SDL_strcasecmp(order, "BGRA") == 0) fmt = (VkForgePixelFormatPair){ SDL_PIXELFORMAT_BGRA8888, VK_FORMAT_B8G8R8A8_UNORM };
+    else if (SDL_strcasecmp(order, "ARGB") == 0) fmt = (VkForgePixelFormatPair){ SDL_PIXELFORMAT_ARGB8888, VK_FORMAT_A8B8G8R8_UNORM_PACK32 };
+    else if (SDL_strcasecmp(order, "ABGR") == 0) fmt = (VkForgePixelFormatPair){ SDL_PIXELFORMAT_ABGR8888, VK_FORMAT_A8B8G8R8_UNORM_PACK32 };
 
-        if( pipeline_design->descriptorset_layout_design_count ) 
-        {
-            dsetLayouts = (VkDescriptorSetLayout*) SDL_malloc(
-                sizeof(VkDescriptorSetLayout) * pipeline_design->descriptorset_layout_design_count
-            );
+    // You can add more uncommon formats if you ever support them
+    // e.g., XRGB, XBGR, RGBX, BGRX (Vulkan also has VK_FORMAT_B8G8R8A8_UNORM for BGRA)
 
-            if ( !dsetLayouts )
-            {
-                SDL_LogError(0, "Failed to allocate memory for descriptor set layouts");
-                return VK_ERROR_OUT_OF_HOST_MEMORY;
-            }
-
-            for (uint32_t i = 0; i < pipeline_design->descriptorset_layout_design_count; i++)
-            {
-                const VkForgeLayoutDescriptorSetLayoutDesign* set_design =
-                    pipeline_design->descriptorset_layout_design_buffer[i];
-                
-                if(set_design->bind_design_count)
-                {
-                    VkResult result = CreateDescriptorSetLayout(layout->device, set_design, &dsetLayouts[i]);
-                    if (result != VK_SUCCESS)
-                    {
-                        SDL_LogError(0, "Failed to create descriptor set layout");
-                        for (uint32_t j = 0; j < i; j++)
-                        {
-                            vkDestroyDescriptorSetLayout(layout->device, dsetLayouts[j], NULL);
-                        }
-                        SDL_free(dsetLayouts);
-                        return result;
-                    }
-
-                    // Store the created descriptor set layout
-                    if(layout->descriptorset_layout_count < VKFORGE_MAX_DESCRIPTORSET_LAYOUTS)
-                    {
-                        if(dsetLayouts[i]) 
-                            layout->descriptorset_layout_buffer[layout->descriptorset_layout_count++] = dsetLayouts[i];
-                    }
-                    else
-                    {
-                        SDL_LogError(0, "Can not store newly created DescriptorSet. VKFORGE_MAX_DESCRIPTORSET_LAYOUTS exceeded!");
-                        return VK_ERROR_UNKNOWN;
-                    }
-                }
-                else
-                {
-                    dsetLayouts[i] = VK_NULL_HANDLE;
-                }
-            }
-        }
-
-        
-
-        VkPipelineLayoutCreateInfo layoutInfo = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .setLayoutCount = pipeline_design->descriptorset_layout_design_count,
-            .pSetLayouts = dsetLayouts,
-            .pushConstantRangeCount = 0,
-            .pPushConstantRanges = NULL
-        };
-
-        VkPipelineLayout pipelineLayout;
-        VkResult result = vkCreatePipelineLayout(layout->device, &layoutInfo, NULL, &pipelineLayout);
-        SDL_free(dsetLayouts);
-
-        if (result != VK_SUCCESS)
-        {
-            SDL_LogError(0, "Failed to create pipeline layout");
-            return result;
-        }
-
-        // Store the created pipeline layout
-        layout->pipeline_layout_buffer[layout_index] = pipelineLayout;
-        layout->pipeline_layout_count ++;
-    }
-    else
-    {
-        SDL_LogError(0, "Pipeline Layout Buffer exceeded when attempted to create new pipeline layout");
-        return VK_ERROR_UNKNOWN;
-    }
-
-    return VK_SUCCESS;
+    return fmt;
 }

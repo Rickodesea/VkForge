@@ -628,7 +628,7 @@ def CreateStagingBuffer(ctx: VkForgeContext):
 """
     return content.format()
 
-def CreateTexture(ctx: VkForgeContext):
+def CreateCreateTexture(ctx: VkForgeContext):
     content = """\
 VkForgeTexture VkForge_CreateTexture
 (
@@ -636,15 +636,17 @@ VkForgeTexture VkForge_CreateTexture
     VkDevice device,
     VkQueue queue,
     VkCommandBuffer commandBuffer,
-    const char* filename
+    const char* filename,
+    const char* pixel_order
 )
 {{
-    VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
     VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
     VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     VkFilter filter = VK_FILTER_LINEAR;
 
     VkForgeTexture texture = {{0}};
+
+    VkForgePixelFormatPair fmtPair = VkForge_GetPixelFormatFromString(pixel_order);
     
     SDL_Surface* surface = IMG_Load(filename);
     if (!surface) 
@@ -653,21 +655,18 @@ VkForgeTexture VkForge_CreateTexture
         exit(1);
     }}
 
-    if (SDL_BYTESPERPIXEL(surface->format) != 4) 
+    SDL_Surface* converted = SDL_ConvertSurface(surface, fmtPair.sdl_format);
+    SDL_DestroySurface(surface);
+    if (!converted) 
     {{
-        SDL_Surface* converted = SDL_ConvertSurface(surface, SDL_PIXELFORMAT_RGBA8888);
-        SDL_DestroySurface(surface);
-        if (!converted) 
-        {{
-            SDL_LogError(0, "Failed to convert surface format: %s", filename);
-            return texture;
-        }}
-        surface = converted;
+        SDL_LogError(0, "Failed to convert surface format: %s", filename);
+        return texture;
     }}
+    surface = converted;
 
     texture.width = surface->w;
     texture.height = surface->h;
-    texture.format = format;
+    texture.format = fmtPair.vk_format;
     texture.samples = VK_SAMPLE_COUNT_1_BIT;
 
     VkDeviceSize imageSize = surface->pitch * surface->h;
@@ -739,10 +738,52 @@ VkForgeTexture VkForge_CreateTexture
     vkDestroyFence(device, fence, 0);
     VkForge_DestroyBufferAlloc(device, staging);
 
-    texture.imageView = VkForge_CreateImageView(device, texture.image, format);
+    texture.imageView = VkForge_CreateImageView(device, texture.image, texture.format);
     texture.sampler = VkForge_CreateSampler(device, filter, addressMode);
 
     return texture;
+}}
+"""
+    return content.format()
+
+def CreateDestroyTexture(ctx: VkForgeContext):
+    content = """\
+void VkForge_DestroyTexture(VkDevice device, VkForgeTexture texture)
+{{
+    if (device == VK_NULL_HANDLE) {{
+        SDL_LogError(0, "Invalid device handle when destroying texture");
+        return;
+    }}
+
+    // Destroy sampler if it exists
+    if (texture.sampler != VK_NULL_HANDLE) {{
+        vkDestroySampler(device, texture.sampler, NULL);
+        texture.sampler = VK_NULL_HANDLE;
+    }}
+
+    // Destroy image view if it exists
+    if (texture.imageView != VK_NULL_HANDLE) {{
+        vkDestroyImageView(device, texture.imageView, NULL);
+        texture.imageView = VK_NULL_HANDLE;
+    }}
+
+    // Destroy image if it exists
+    if (texture.image != VK_NULL_HANDLE) {{
+        vkDestroyImage(device, texture.image, NULL);
+        texture.image = VK_NULL_HANDLE;
+    }}
+
+    // Free memory if it exists
+    if (texture.memory != VK_NULL_HANDLE) {{
+        vkFreeMemory(device, texture.memory, NULL);
+        texture.memory = VK_NULL_HANDLE;
+    }}
+
+    // Reset other fields
+    texture.width = 0;
+    texture.height = 0;
+    texture.format = VK_FORMAT_UNDEFINED;
+    texture.samples = VK_SAMPLE_COUNT_1_BIT;
 }}
 """
     return content.format()
@@ -899,7 +940,7 @@ VkSampler VkForge_CreateSampler
     samplerInfo.addressModeU = addressMode;
     samplerInfo.addressModeV = addressMode;
     samplerInfo.addressModeW = addressMode;
-    samplerInfo.anisotropyEnable = VK_TRUE;
+    samplerInfo.anisotropyEnable = VK_FALSE;
     samplerInfo.maxAnisotropy = 16.0f;
     samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
     samplerInfo.unnormalizedCoordinates = VK_FALSE;
@@ -1493,6 +1534,82 @@ VkCommandBuffer VkForge_AllocateCommandBuffer
 """
     return content.format()
 
+def CreateCreateDescriptorPool(ctx: VkForgeContext):
+    content = """\
+VkDescriptorPool VkForge_CreateDescriptorPool(
+    VkDevice device,
+    uint32_t max_sets,
+    uint32_t pool_sizes_count,
+    VkDescriptorPoolSize* pool_sizes
+)
+{{
+    VkDescriptorPoolCreateInfo poolInfo = {{0}};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.maxSets = max_sets;
+    poolInfo.poolSizeCount = pool_sizes_count;
+    poolInfo.pPoolSizes = pool_sizes;
+
+    VkDescriptorPool pool = VK_NULL_HANDLE;
+
+    VkResult result = vkCreateDescriptorPool(device, &poolInfo, 0, &pool);
+
+    if(VK_SUCCESS != result)
+    {{
+        SDL_LogError(0, "Failed to Create Descriptor Pool: %s", VkForge_StringifyResult(result));
+        exit(1);
+    }}
+
+    return pool;
+}}
+"""
+    return content.format()
+
+def CreateAllocateDescriptorSet(ctx: VkForgeContext):
+    content = """\
+VkDescriptorSet VkForge_AllocateDescriptorSet(
+    VkDevice device,
+    VkDescriptorPool pool,
+    uint32_t descriptorset_count,
+    VkDescriptorSetLayout* descriptorset_layouts
+)
+{{
+    VkDescriptorSetAllocateInfo allocInfo = {{ 0 }};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = pool;
+    allocInfo.descriptorSetCount = descriptorset_count;
+    allocInfo.pSetLayouts = descriptorset_layouts;
+
+    VkDescriptorSet descriptorset = VK_NULL_HANDLE;
+
+    vkAllocateDescriptorSets(device, &allocInfo, &descriptorset);
+
+    return descriptorset;
+}}
+"""
+    return content.format()
+
+def CreateGetPixelFormatFromString(ctx: VkForgeContext):
+    content = """\
+VkForgePixelFormatPair VkForge_GetPixelFormatFromString(const char* order)
+{{
+    // Default: ABGR (matches VK_FORMAT_R8G8B8A8_UNORM)
+    VkForgePixelFormatPair fmt = {{ SDL_PIXELFORMAT_ABGR8888, VK_FORMAT_R8G8B8A8_UNORM }};
+
+    if (!order) return fmt;
+
+    if      (SDL_strcasecmp(order, "RGBA") == 0) fmt = (VkForgePixelFormatPair){{ SDL_PIXELFORMAT_RGBA8888, VK_FORMAT_R8G8B8A8_UNORM }};
+    else if (SDL_strcasecmp(order, "BGRA") == 0) fmt = (VkForgePixelFormatPair){{ SDL_PIXELFORMAT_BGRA8888, VK_FORMAT_B8G8R8A8_UNORM }};
+    else if (SDL_strcasecmp(order, "ARGB") == 0) fmt = (VkForgePixelFormatPair){{ SDL_PIXELFORMAT_ARGB8888, VK_FORMAT_A8B8G8R8_UNORM_PACK32 }};
+    else if (SDL_strcasecmp(order, "ABGR") == 0) fmt = (VkForgePixelFormatPair){{ SDL_PIXELFORMAT_ABGR8888, VK_FORMAT_A8B8G8R8_UNORM_PACK32 }};
+
+    // You can add more uncommon formats if you ever support them
+    // e.g., XRGB, XBGR, RGBX, BGRX (Vulkan also has VK_FORMAT_B8G8R8A8_UNORM for BGRA)
+
+    return fmt;
+}}
+"""
+    return content.format()
+
 def GetUtilStrings(ctx: VkForgeContext):
     return [
         CreateDebugMsgInfo(ctx),
@@ -1520,7 +1637,8 @@ def GetUtilStrings(ctx: VkForgeContext):
         CreateStagingBuffer(ctx),
         CreateImageView(ctx),
         CreateSampler(ctx),
-        CreateTexture(ctx),
+        CreateCreateTexture(ctx),
+        CreateDestroyTexture(ctx),
         CreateAllocDeviceMemory(ctx),
         CreateBindBufferMemory(ctx),
         CreateBindImageMemory(ctx),
@@ -1535,6 +1653,9 @@ def GetUtilStrings(ctx: VkForgeContext):
         CreateStringifyResult(ctx),
         CreateLoadBuffer(ctx),
         CreateCmdCopyBuffer(ctx),
-        CreateAllocateCommandBuffer(ctx)
+        CreateAllocateCommandBuffer(ctx),
+        CreateCreateDescriptorPool(ctx),
+        CreateAllocateDescriptorSet(ctx),
+        CreateGetPixelFormatFromString(ctx)
 
     ]

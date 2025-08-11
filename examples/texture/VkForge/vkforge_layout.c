@@ -50,14 +50,24 @@ struct VkForgeReferencedLayoutDesign
     VkForgeLayoutReferenceDesign** reference_buffer;
 };
 
-/** NO STAGES **/
+static uint32_t STAGE_0_0_0[] = { VK_SHADER_STAGE_FRAGMENT_BIT };
 
-/** NO BINDING **/
+static VkForgeLayoutBindDesign BIND_0_0_0 = {
+    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, 1, STAGE_0_0_0
+};
+static VkForgeLayoutBindDesign* BIND_DESIGNS_0_0[] = {
+    &BIND_0_0_0
+};
 
-/** NO DESCRIPTORSET LAYOUTS **/
+static VkForgeLayoutDescriptorSetLayoutDesign DESCRIPTOR_SET_LAYOUT_0_0 = {
+    1, BIND_DESIGNS_0_0
+};
+static VkForgeLayoutDescriptorSetLayoutDesign* DESCRIPTOR_SET_LAYOUTS_0[] = {
+    &DESCRIPTOR_SET_LAYOUT_0_0
+};
 
 static VkForgeLayoutPipelineLayoutDesign PIPELINE_LAYOUT_0 = {
-    0, NULL
+    1, DESCRIPTOR_SET_LAYOUTS_0
 };
 static VkForgeLayoutPipelineLayoutDesign* PIPELINE_LAYOUT_DESIGNS[] = {
     &PIPELINE_LAYOUT_0

@@ -9,6 +9,10 @@ static Entity   entities[24] = {0};
 static uint32_t entity_count = 0;
 
 typedef struct UserCallbackData UserCallbackData;
+static VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
+static VkDescriptorSet descriptorset = VK_NULL_HANDLE;
+static VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+static VkForgeTexture texture;
 
 struct UserCallbackData //This is just an example. Another approach would to make these fields global.
 {
@@ -79,6 +83,23 @@ static void CopyCallback(VkForgeRender render) {
             VK_PIPELINE_STAGE_2_TRANSFER_BIT,
             VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT
         );
+
+        VkDescriptorImageInfo desImgInfo = { 0 };
+        desImgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        desImgInfo.imageView = texture.imageView;
+        desImgInfo.sampler = texture.sampler;
+        
+
+        VkWriteDescriptorSet descriptorWrite = { 0 };
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = descriptorset;
+        descriptorWrite.dstBinding = 0;
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pImageInfo = &desImgInfo;
+
+        vkUpdateDescriptorSets(render.device, 1, &descriptorWrite, 0, NULL);
     }
 }
 
@@ -100,6 +121,14 @@ static void DrawCallback(VkForgeRender render) {
     if(entity_count)
     {
         // if any descriptset, you need to bind them manually using Vk functions
+        vkCmdBindDescriptorSets(
+            render.cmdbuf_draw, 
+            VK_PIPELINE_BIND_POINT_GRAPHICS, 
+            pipeline_layout, 
+            0, 1, 
+            &descriptorset, 
+            0, NULL
+        );
         VkForge_BindPipeline(userData->layout, "Default", render.cmdbuf_draw);
 
         
@@ -175,15 +204,17 @@ int main() {
     // Each vertex: x, y
     float quad[] = {
         // First triangle
-        -1.0f, -1.0f,
-        1.0f, -1.0f,
-        1.0f,  1.0f,
+        -1.0f, -1.0f,   0.0f, 0.0f, // bottom-left
+        1.0f, -1.0f,   1.0f, 0.0f, // bottom-right
+        1.0f,  1.0f,   1.0f, 1.0f, // top-right
 
         // Second triangle
-        -1.0f, -1.0f,
-        1.0f,  1.0f,
-        -1.0f,  1.0f
+        -1.0f, -1.0f,   0.0f, 0.0f, // bottom-left
+        1.0f,  1.0f,   1.0f, 1.0f, // top-right
+        -1.0f,  1.0f,   0.0f, 1.0f  // top-left
     };
+
+
 
     userData.quadBuffer = VkForge_CreateBufferAlloc(
         core->physical_device,
@@ -202,9 +233,51 @@ int main() {
         0, // offset in VkBuffer
         sizeof(quad), // sizeof data being copied
         quad // actual raw data
-    ); 
+    );
+
+    texture = VkForge_CreateTexture(
+        core->physical_device,
+        core->device,
+        core->queue,
+        oneCopy,
+        "statue.jpg",
+        0
+    );
 
     vkFreeCommandBuffers(core->device, core->cmdpool, 1, &oneCopy);
+
+    VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+    VkDescriptorSetLayout descriptorSetLayouts[VKFORGE_MAX_DESCRIPTORSET_LAYOUTS] = {0};
+    VkDescriptorPoolSize poolSizes[VKFORGE_MAX_DESCRIPTOR_BINDINGS] = {0};
+    uint32_t descriptorSetLayoutsCount = 0;
+    uint32_t poolSizesCount = 0;
+
+    VkForge_SharePipelineLayoutDetails(
+        layout, 
+        "Default",
+        &pipelineLayout,
+        &descriptorSetLayoutsCount,
+        descriptorSetLayouts,
+        &poolSizesCount,
+        poolSizes
+    );
+    
+
+    descriptor_pool = VkForge_CreateDescriptorPool(
+        core->device,
+        descriptorSetLayoutsCount,
+        poolSizesCount,
+        poolSizes
+    );
+
+    descriptorset = VkForge_AllocateDescriptorSet(
+        core->device,
+        descriptor_pool,
+        descriptorSetLayoutsCount,
+        descriptorSetLayouts
+    );
+
+    pipeline_layout = pipelineLayout;
 
     // We create the buffers for entities
     // There are updated in the callback for copy
@@ -283,6 +356,8 @@ int main() {
 
     SDL_LogInfo(0, "Quitting Application");
     vkDeviceWaitIdle(core->device);
+    vkDestroyDescriptorPool(core->device, descriptor_pool, 0);
+    VkForge_DestroyTexture(core->device, texture);
     VkForge_DestroyBufferAlloc(core->device, userData.quadBuffer);
     VkForge_DestroyBufferAlloc(core->device, userData.entityBuffer);
     VkForge_DestroyBufferAlloc(core->device, userData.stagingBuffer);
