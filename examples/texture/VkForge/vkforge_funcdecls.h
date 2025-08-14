@@ -74,8 +74,8 @@ void VkForge_DestroyCore(VkForgeCore* core);
 void VkForge_Destroy(VkDevice device, uint32_t count, VkForgeDestroyCallback* destroyers);
 
 VkForgeRender* VkForge_CreateRender(SDL_Window*           window,
-    VkPhysicalDevice      physical_device,
     VkSurfaceKHR          surface,
+    VkPhysicalDevice      physical_device,
     VkDevice              device,
     VkQueue               queue,
     VkCommandPool         cmdPool,

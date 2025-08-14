@@ -1,0 +1,1 @@
+- [ ] add --shader-binary-path. Root rpth baked into the pipeline functions.

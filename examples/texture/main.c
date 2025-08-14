@@ -300,8 +300,8 @@ int main() {
     // You job is to handle the transfering the data, binding of descriptors and pipelines and making draw calls 
     VkForgeRender* render = VkForge_CreateRender(
         window,
-        core->physical_device,
         core->surface,
+        core->physical_device,        
         core->device,
         core->queue,
         core->cmdpool,
