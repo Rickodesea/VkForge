@@ -630,7 +630,7 @@ def CreateStagingBuffer(ctx: VkForgeContext):
 
 def CreateCreateTexture(ctx: VkForgeContext):
     content = """\
-VkForgeTexture VkForge_CreateTexture
+VkForgeTexture* VkForge_CreateTexture
 (
     VkPhysicalDevice physical_device,
     VkDevice device,
@@ -644,7 +644,8 @@ VkForgeTexture VkForge_CreateTexture
     VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     VkFilter filter = VK_FILTER_LINEAR;
 
-    VkForgeTexture texture = {{0}};
+    VkForgeTexture* texture = SDL_malloc(sizeof(VkForgeTexture));
+    SDL_memset(texture, 0, sizeof(VkForgeTexture));
 
     VkForgePixelFormatPair fmtPair = VkForge_GetPixelFormatFromString(pixel_order);
     
@@ -664,10 +665,10 @@ VkForgeTexture VkForge_CreateTexture
     }}
     surface = converted;
 
-    texture.width = surface->w;
-    texture.height = surface->h;
-    texture.format = fmtPair.vk_format;
-    texture.samples = VK_SAMPLE_COUNT_1_BIT;
+    texture->width = surface->w;
+    texture->height = surface->h;
+    texture->format = fmtPair.vk_format;
+    texture->samples = VK_SAMPLE_COUNT_1_BIT;
 
     VkDeviceSize imageSize = surface->pitch * surface->h;
 
@@ -683,22 +684,22 @@ VkForgeTexture VkForge_CreateTexture
     (
         physical_device,
         device,
-        texture.width,
-        texture.height,
-        texture.format,
+        texture->width,
+        texture->height,
+        texture->format,
         usage,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     );
 
-    texture.image = imageAlloc.image;
-    texture.memory = imageAlloc.memory;
+    texture->image = imageAlloc.image;
+    texture->memory = imageAlloc.memory;
 
     VkForge_BeginCommandBuffer(commandBuffer);
 
     VkForge_CmdImageBarrier
     (
         commandBuffer,
-        texture.image,
+        texture->image,
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         0,
@@ -711,16 +712,16 @@ VkForgeTexture VkForge_CreateTexture
     (
         commandBuffer, 
         staging.buffer,
-        texture.image,
+        texture->image,
         0, 0,
-        texture.width, texture.height,
+        texture->width, texture->height,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
     );
 
     VkForge_CmdImageBarrier
     (
         commandBuffer,
-        texture.image,
+        texture->image,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -738,8 +739,8 @@ VkForgeTexture VkForge_CreateTexture
     vkDestroyFence(device, fence, 0);
     VkForge_DestroyBufferAlloc(device, staging);
 
-    texture.imageView = VkForge_CreateImageView(device, texture.image, texture.format);
-    texture.sampler = VkForge_CreateSampler(device, filter, addressMode);
+    texture->imageView = VkForge_CreateImageView(device, texture->image, texture->format);
+    texture->sampler = VkForge_CreateSampler(device, filter, addressMode);
 
     return texture;
 }}
@@ -748,7 +749,7 @@ VkForgeTexture VkForge_CreateTexture
 
 def CreateDestroyTexture(ctx: VkForgeContext):
     content = """\
-void VkForge_DestroyTexture(VkDevice device, VkForgeTexture texture)
+void VkForge_DestroyTexture(VkDevice device, VkForgeTexture* texture)
 {{
     if (device == VK_NULL_HANDLE) {{
         SDL_LogError(0, "Invalid device handle when destroying texture");
@@ -756,34 +757,36 @@ void VkForge_DestroyTexture(VkDevice device, VkForgeTexture texture)
     }}
 
     // Destroy sampler if it exists
-    if (texture.sampler != VK_NULL_HANDLE) {{
-        vkDestroySampler(device, texture.sampler, NULL);
-        texture.sampler = VK_NULL_HANDLE;
+    if (texture->sampler != VK_NULL_HANDLE) {{
+        vkDestroySampler(device, texture->sampler, NULL);
+        texture->sampler = VK_NULL_HANDLE;
     }}
 
     // Destroy image view if it exists
-    if (texture.imageView != VK_NULL_HANDLE) {{
-        vkDestroyImageView(device, texture.imageView, NULL);
-        texture.imageView = VK_NULL_HANDLE;
+    if (texture->imageView != VK_NULL_HANDLE) {{
+        vkDestroyImageView(device, texture->imageView, NULL);
+        texture->imageView = VK_NULL_HANDLE;
     }}
 
     // Destroy image if it exists
-    if (texture.image != VK_NULL_HANDLE) {{
-        vkDestroyImage(device, texture.image, NULL);
-        texture.image = VK_NULL_HANDLE;
+    if (texture->image != VK_NULL_HANDLE) {{
+        vkDestroyImage(device, texture->image, NULL);
+        texture->image = VK_NULL_HANDLE;
     }}
 
     // Free memory if it exists
-    if (texture.memory != VK_NULL_HANDLE) {{
-        vkFreeMemory(device, texture.memory, NULL);
-        texture.memory = VK_NULL_HANDLE;
+    if (texture->memory != VK_NULL_HANDLE) {{
+        vkFreeMemory(device, texture->memory, NULL);
+        texture->memory = VK_NULL_HANDLE;
     }}
 
     // Reset other fields
-    texture.width = 0;
-    texture.height = 0;
-    texture.format = VK_FORMAT_UNDEFINED;
-    texture.samples = VK_SAMPLE_COUNT_1_BIT;
+    texture->width = 0;
+    texture->height = 0;
+    texture->format = VK_FORMAT_UNDEFINED;
+    texture->samples = VK_SAMPLE_COUNT_1_BIT;
+
+    SDL_free(texture);
 }}
 """
     return content.format()

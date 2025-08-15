@@ -219,14 +219,14 @@ VkSampler VkForge_CreateSampler(VkDevice device,
     VkFilter filter,
     VkSamplerAddressMode addressMode);
 
-VkForgeTexture VkForge_CreateTexture(VkPhysicalDevice physical_device,
+VkForgeTexture* VkForge_CreateTexture(VkPhysicalDevice physical_device,
     VkDevice device,
     VkQueue queue,
     VkCommandBuffer commandBuffer,
     const char* filename,
     const char* pixel_order);
 
-void VkForge_DestroyTexture(VkDevice device, VkForgeTexture texture);
+void VkForge_DestroyTexture(VkDevice device, VkForgeTexture* texture);
 
 VkDeviceMemory VkForge_AllocDeviceMemory(VkPhysicalDevice physical_device,
     VkDevice device,

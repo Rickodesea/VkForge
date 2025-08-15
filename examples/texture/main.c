@@ -12,7 +12,7 @@ typedef struct UserCallbackData UserCallbackData;
 static VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
 static VkDescriptorSet descriptorset = VK_NULL_HANDLE;
 static VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
-static VkForgeTexture texture;
+static VkForgeTexture* texture;
 
 struct UserCallbackData //This is just an example. Another approach would to make these fields global.
 {
@@ -86,8 +86,8 @@ static void CopyCallback(VkForgeRender render) {
 
         VkDescriptorImageInfo desImgInfo = { 0 };
         desImgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        desImgInfo.imageView = texture.imageView;
-        desImgInfo.sampler = texture.sampler;
+        desImgInfo.imageView = texture->imageView;
+        desImgInfo.sampler = texture->sampler;
         
 
         VkWriteDescriptorSet descriptorWrite = { 0 };
