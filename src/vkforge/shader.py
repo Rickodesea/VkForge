@@ -73,6 +73,16 @@ def disassemble_shader(build_dir: str, shader_path: Path, mode: str) -> Path:
 
     return output_path
 
+def copy_shader(source_dir: str, copy_dir: str, shader_path: Path, fm: VkForgeModel):
+    if copy_dir:
+        source_dir = Path(source_dir)
+        source_from: Path = source_dir / (shader_path.name + ".spv")
+
+        copy_to = Path(copy_dir) / (shader_path.name + ".spv")
+        if source_from != copy_to: # if not already building to the location then copy
+            copy_to.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source_from, copy_to)
+            print(f"COPIED: -> {copy_to}")
 
 def compile_shader(build_dir: str, copy_dir: str, shader_path: Path, fm: VkForgeModel) -> Path:
     try:
@@ -116,12 +126,6 @@ def compile_shader(build_dir: str, copy_dir: str, shader_path: Path, fm: VkForge
         )
     
     print(f"COMPILED: {shader_path.name} -> {str(output_file)}")
-
-    if copy_dir:
-        copy_to = Path(copy_dir) / (shader_path.name + ".spv")
-        copy_to.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(output_file, copy_to)
-        print(f"COPIED: -> {copy_to}")
 
     return output_file
 
@@ -222,7 +226,7 @@ def validate_shader_combination(build_dir: str, shader_list: List[dict]):
 
 
 def load_shader_data(
-    roots: List[str], build_dir: str, copy_dir: str, fm: VkForgeModel
+    roots: List[str], build_dir: str, copy_dir: str|None, overwrite_dir:str|None, fm: VkForgeModel
 ):
     shader_list: Dict[dict] = {}
     shader_combinations: Dict[str, List[list]] = {}
@@ -245,6 +249,7 @@ def load_shader_data(
                 if shader_is_source(shader_ext):
                     shader_source_path = shader_path
                     shader_binary_path = compile_shader(build_dir, copy_dir, shader_path, fm)
+                    copy_shader(build_dir, copy_dir, shader_path, fm)
                     spirv_reflect = reflect_shader(shader_binary_path)
                     entrypoint = get_shader_entrypoint(
                         id, spirv_reflect
@@ -252,6 +257,7 @@ def load_shader_data(
                     entryname, mode = entrypoint
                 elif shader_is_binary(shader_ext):
                     shader_binary_path = shader_path
+                    copy_shader(shader_binary_path.stem, copy_dir, shader_path, fm)
                     spirv_reflect = reflect_shader(shader_binary_path)
                     entrypoint = get_shader_entrypoint(
                         id, spirv_reflect
@@ -265,6 +271,11 @@ def load_shader_data(
                         f"Can not determine if shader is GLSL source or "
                         "SPIR-V binary from the extension: {shader_ext}"
                     )
+
+                if overwrite_dir:
+                    baked_dir = Path(overwrite_dir) / shader_binary_path.name
+                    print(f"BAKED({pipeline.name}): {shader_binary_path} -> {baked_dir}")
+                    shader_binary_path = baked_dir
 
                 shader = {
                     SHADER.MODE: mode,

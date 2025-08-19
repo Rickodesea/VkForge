@@ -107,12 +107,22 @@ def main():
         help="If set, disables Vulkan validation layers (useful for release builds)."
     )
 
+    parser.add_argument(
+        "--overwrite-shader-dir",
+        default=None,
+        help="By default Pipeline Shaders are embedded with --build-dir as root path. This overwrite the root path. However, any compiled shader is still saved at --build-dir.",
+    )
+
     args = parser.parse_args()
     raw_data = load_file(args.config_path)
 
     forgeModel = VkForgeModel(**raw_data)
     shaderData = load_shader_data(
-        args.config_roots, args.build_dir, args.copy_shader_dir, forgeModel
+        args.config_roots, 
+        args.build_dir, 
+        args.copy_shader_dir, 
+        args.overwrite_shader_dir,
+        forgeModel
     )
     layout = create_pipeline_layouts(forgeModel, shaderData)
 
