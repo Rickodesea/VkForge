@@ -10,7 +10,7 @@ static uint32_t entity_count = 0;
 
 typedef struct UserCallbackData UserCallbackData;
 static VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
-static VkDescriptorSet descriptorset = VK_NULL_HANDLE;
+static VkDescriptorSet descriptorsets[VKFORGE_MAX_DESCRIPTORSET_LAYOUTS];
 static VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
 static VkForgeTexture* texture;
 
@@ -92,7 +92,7 @@ static void CopyCallback(VkForgeRender render) {
 
         VkWriteDescriptorSet descriptorWrite = { 0 };
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite.dstSet = descriptorset;
+        descriptorWrite.dstSet = descriptorsets[0];
         descriptorWrite.dstBinding = 0;
         descriptorWrite.dstArrayElement = 0;
         descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -125,8 +125,8 @@ static void DrawCallback(VkForgeRender render) {
             render.cmdbuf_draw, 
             VK_PIPELINE_BIND_POINT_GRAPHICS, 
             pipeline_layout, 
-            0, 1, 
-            &descriptorset, 
+            0, 
+            1, descriptorsets, 
             0, NULL
         );
         VkForge_BindPipeline(userData->layout, "Default", render.cmdbuf_draw);
@@ -182,15 +182,7 @@ int main() {
         core->device
     );
 
-    if(!layout || VkForge_CreatePipeline(layout, "Default") != VK_SUCCESS)  //Pipeline name is the same name defined in the Config
-    {
-        SDL_LogError(0, "Failed to setup pipeline");
-        if(layout) VkForge_DestroyLayout(layout);
-        VkForge_DestroyCore(core);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        exit(1);
-    }
+    VkForge_BuildPipeline(layout, "Default");
 
     UserCallbackData userData = {0};
     userData.layout = layout;
@@ -258,6 +250,7 @@ int main() {
         &pipelineLayout,
         &descriptorSetLayoutsCount,
         descriptorSetLayouts,
+        NULL,
         &poolSizesCount,
         poolSizes
     );
@@ -270,11 +263,12 @@ int main() {
         poolSizes
     );
 
-    descriptorset = VkForge_AllocateDescriptorSet(
+    VkForge_AllocateDescriptorSet(
         core->device,
         descriptor_pool,
         descriptorSetLayoutsCount,
-        descriptorSetLayouts
+        descriptorSetLayouts,
+        descriptorsets
     );
 
     pipeline_layout = pipelineLayout;

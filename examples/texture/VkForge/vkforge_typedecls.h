@@ -142,6 +142,14 @@ struct VkForgePixelFormatPair
     VkFormat vk_format;
 };
 
+typedef union VkForgeDescriptorResource VkForgeDescriptorResource;
+
+union VkForgeDescriptorResource
+{
+    VkDescriptorImageInfo  image;
+    VkDescriptorBufferInfo buffer;
+};
+
 
 #ifdef __cplusplus
 }

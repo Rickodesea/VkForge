@@ -1341,11 +1341,18 @@ VkDescriptorPool VkForge_CreateDescriptorPool(
     return pool;
 }
 
-VkDescriptorSet VkForge_AllocateDescriptorSet(
+/// @brief
+/// @param device
+/// @param pool
+/// @param descriptorset_count
+/// @param descriptorset_layouts
+/// @param outDescriptorSets must be large enough to accomodate atleast descriptorset_count
+void VkForge_AllocateDescriptorSet(
     VkDevice device,
     VkDescriptorPool pool,
     uint32_t descriptorset_count,
-    VkDescriptorSetLayout* descriptorset_layouts
+    VkDescriptorSetLayout* descriptorset_layouts,
+    VkDescriptorSet* outDescriptorSets
 )
 {
     VkDescriptorSetAllocateInfo allocInfo = { 0 };
@@ -1354,11 +1361,7 @@ VkDescriptorSet VkForge_AllocateDescriptorSet(
     allocInfo.descriptorSetCount = descriptorset_count;
     allocInfo.pSetLayouts = descriptorset_layouts;
 
-    VkDescriptorSet descriptorset = VK_NULL_HANDLE;
-
-    vkAllocateDescriptorSets(device, &allocInfo, &descriptorset);
-
-    return descriptorset;
+    vkAllocateDescriptorSets(device, &allocInfo, outDescriptorSets);
 }
 
 VkForgePixelFormatPair VkForge_GetPixelFormatFromString(const char* order)
@@ -1377,6 +1380,33 @@ VkForgePixelFormatPair VkForge_GetPixelFormatFromString(const char* order)
     // e.g., XRGB, XBGR, RGBX, BGRX (Vulkan also has VK_FORMAT_B8G8R8A8_UNORM for BGRA)
 
     return fmt;
+}
+
+/**
+ * @brief Checks if a descriptor type is for buffer resources
+ * @param type The Vulkan descriptor type to check
+ * @return True if the descriptor type is for buffers, false otherwise
+ */
+bool VkForge_IsDescriptorTypeBuffer(VkDescriptorType type)
+{
+    return (type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
+            type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
+            type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
+            type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC);
+}
+
+/**
+ * @brief Checks if a descriptor type is for image resources
+ * @param type The Vulkan descriptor type to check
+ * @return True if the descriptor type is for images, false otherwise
+ */
+bool VkForge_IsDescriptorTypeImage(VkDescriptorType type)
+{
+    return (type == VK_DESCRIPTOR_TYPE_SAMPLER ||
+            type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
+            type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
+            type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE ||
+            type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT);
 }
 
 
