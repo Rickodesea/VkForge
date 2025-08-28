@@ -88,7 +88,7 @@ def GetMaxDescriptorBindings(ctx: VkForgeContext):
                         max_descriptor_binding = len(set1)
     return max(max_descriptor_binding, 1)
 
-def CreateMaxes(ctx: VkForgeContext) -> str:
+def Create_Maxes(ctx: VkForgeContext) -> str:
     content = """\
 #define VKFORGE_MAX_PIPELINES {max_pipelines_value}
 #define VKFORGE_MAX_PIPELINE_LAYOUTS {max_pipeline_layouts_value}
@@ -104,7 +104,7 @@ def CreateMaxes(ctx: VkForgeContext) -> str:
 
     return output
 
-def CreateDefaults(ctx: VkForgeContext) -> str:
+def Create_Defaults(ctx: VkForgeContext) -> str:
     content = """\
 #define VKFORGE_DEFAULT_FORMAT {default_format}
 """
@@ -231,10 +231,22 @@ struct VkForgePixelFormatPair
 """
     return content.format()
 
+def CreateDescriptorResource(ctx: VkForgeContext):
+    content = """\
+typedef union VkForgeDescriptorResource VkForgeDescriptorResource;
+
+union VkForgeDescriptorResource
+{{
+    VkDescriptorImageInfo  image;
+    VkDescriptorBufferInfo buffer;
+}};
+"""
+    return content.format()
+
 def GetTypeStrings(ctx: VkForgeContext):
     return [
-        CreateDefaults(ctx),
-        CreateMaxes(ctx),
+        Create_Defaults(ctx),
+        Create_Maxes(ctx),
         CreateCore(ctx),
         CreateBufferAllocType(ctx),
         CreateImageAllocType(ctx),
@@ -244,6 +256,8 @@ def GetTypeStrings(ctx: VkForgeContext):
         CreateDestroyCallback(ctx),
         CreateQuad(ctx),
         CreateImagePair(ctx),
-        CreatePixelFormatPair(ctx)
+        CreatePixelFormatPair(ctx),
+        CreateDescriptorResource(ctx),
+        
         
     ]

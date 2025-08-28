@@ -1,17 +1,25 @@
-VkForgePixelFormatPair VkForge_GetPixelFormatFromString(const char* order)
+void VkForge_DestroyLayout(VkForgeLayout* forge_layout)
 {
-    // Default: ABGR (matches VK_FORMAT_R8G8B8A8_UNORM)
-    VkForgePixelFormatPair fmt = { SDL_PIXELFORMAT_ABGR8888, VK_FORMAT_R8G8B8A8_UNORM };
+    if ( forge_layout )
+    {
+        // Destroy all pipelines
+        for (uint8_t i = 0; i < VKFORGE_MAX_PIPELINES; i++)
+        {
+            if(forge_layout->pipeline_buffer[i]) vkDestroyPipeline(forge_layout->device, forge_layout->pipeline_buffer[i], 0);
+        }
 
-    if (!order) return fmt;
+        // Destroy all pipeline layouts
+        for (uint8_t i = 0; i < VKFORGE_MAX_PIPELINE_LAYOUTS; i++)
+        {
+            // Destroy all descriptor sets and layouts
+            for (uint8_t j = 0; j < forge_layout->descriptorset_layout_count[i]; j++)
+            {
+                if(forge_layout->descriptorset_layout_buffer[i][j]) vkDestroyDescriptorSetLayout(forge_layout->device, forge_layout->descriptorset_layout_buffer[i][j], 0);
+            }
+            if(forge_layout->descriptor_pools[i]) vkDestroyDescriptorPool(forge_layout->device, forge_layout->descriptor_pools[i], 0);
+            if(forge_layout->pipeline_layout_buffer[i]) vkDestroyPipelineLayout(forge_layout->device, forge_layout->pipeline_layout_buffer[i], 0);
+        }
 
-    if      (SDL_strcasecmp(order, "RGBA") == 0) fmt = (VkForgePixelFormatPair){ SDL_PIXELFORMAT_RGBA8888, VK_FORMAT_R8G8B8A8_UNORM };
-    else if (SDL_strcasecmp(order, "BGRA") == 0) fmt = (VkForgePixelFormatPair){ SDL_PIXELFORMAT_BGRA8888, VK_FORMAT_B8G8R8A8_UNORM };
-    else if (SDL_strcasecmp(order, "ARGB") == 0) fmt = (VkForgePixelFormatPair){ SDL_PIXELFORMAT_ARGB8888, VK_FORMAT_A8B8G8R8_UNORM_PACK32 };
-    else if (SDL_strcasecmp(order, "ABGR") == 0) fmt = (VkForgePixelFormatPair){ SDL_PIXELFORMAT_ABGR8888, VK_FORMAT_A8B8G8R8_UNORM_PACK32 };
-
-    // You can add more uncommon formats if you ever support them
-    // e.g., XRGB, XBGR, RGBX, BGRX (Vulkan also has VK_FORMAT_B8G8R8A8_UNORM for BGRA)
-
-    return fmt;
+        SDL_free(forge_layout);
+    }
 }
