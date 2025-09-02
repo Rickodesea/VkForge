@@ -1651,6 +1651,73 @@ bool VkForge_IsDescriptorTypeBuffer(VkDescriptorType type)
 """
     return content.format()
 
+def CreateStringifyDescriptorType(ctx: VkForgeContext):
+    content = """\
+const char* VkForge_StringifyDescriptorType(VkDescriptorType descriptortype)
+{{
+    switch (descriptortype)
+    {{
+        case VK_DESCRIPTOR_TYPE_SAMPLER:
+            return "VK_DESCRIPTOR_TYPE_SAMPLER";
+        case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+            return "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+        case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+            return "VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE";
+        case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+            return "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+        case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+            return "VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER";
+        case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+            return "VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER";
+        case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+            return "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER";
+        case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+            return "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
+        case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+            return "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC";
+        case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+            return "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC";
+        case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+            return "VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT";
+        case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
+            return "VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK";
+        #ifdef VK_KHR_acceleration_structure
+        case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+            return "VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR";
+        #endif
+        #ifdef VK_NV_ray_tracing
+        case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV:
+            return "VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV";
+        #endif
+        #ifdef VK_QCOM_image_processing
+        case VK_DESCRIPTOR_TYPE_SAMPLE_WEIGHT_IMAGE_QCOM:
+            return "VK_DESCRIPTOR_TYPE_SAMPLE_WEIGHT_IMAGE_QCOM";
+        case VK_DESCRIPTOR_TYPE_BLOCK_MATCH_IMAGE_QCOM:
+            return "VK_DESCRIPTOR_TYPE_BLOCK_MATCH_IMAGE_QCOM";
+        #endif
+        #ifdef VK_ARM_tensors
+        case VK_DESCRIPTOR_TYPE_TENSOR_ARM:
+            return "VK_DESCRIPTOR_TYPE_TENSOR_ARM";
+        #endif
+        #ifdef VK_EXT_mutable_descriptor_type
+        case VK_DESCRIPTOR_TYPE_MUTABLE_EXT:
+            return "VK_DESCRIPTOR_TYPE_MUTABLE_EXT";
+        #endif
+        #ifdef VK_NV_partitioned_acceleration_structure
+        case VK_DESCRIPTOR_TYPE_PARTITIONED_ACCELERATION_STRUCTURE_NV:
+            return "VK_DESCRIPTOR_TYPE_PARTITIONED_ACCELERATION_STRUCTURE_NV";
+        #endif
+        #ifdef VK_VALVE_mutable_descriptor_type
+        case VK_DESCRIPTOR_TYPE_MUTABLE_VALVE:
+            return "VK_DESCRIPTOR_TYPE_MUTABLE_VALVE";
+        #endif
+        default:
+            return "VK_DESCRIPTOR_TYPE_UNKNOWN";
+    }}
+}}
+"""
+    return content.format()
+
 def GetUtilStrings(ctx: VkForgeContext):
     return [
         CreateDebugMsgInfo(ctx),
@@ -1699,6 +1766,7 @@ def GetUtilStrings(ctx: VkForgeContext):
         CreateAllocateDescriptorSet(ctx),
         CreateGetPixelFormatFromString(ctx),
         CreatesIsDescriptorTypeBuffer(ctx),
-        CreatesIsDescriptorTypeImage(ctx)
+        CreatesIsDescriptorTypeImage(ctx),
+        CreateStringifyDescriptorType(ctx)
 
     ]

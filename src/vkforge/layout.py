@@ -231,7 +231,11 @@ def optimize_pipeline_layouts(fm: VkForgeModel, data: dict) -> dict:
     
     if current:
         layouts.append(current)
+    
+    # This code does not generate empty pipeline layout
+    # It must be manually added if needed
 
+    # Scenario 1: All Pipelines require empty pipeline layout
     # no layout mean no shader had descriptorset
     # therefore create blank pipline layout and assign all pipeline to it
     if not layouts: 
@@ -239,6 +243,18 @@ def optimize_pipeline_layouts(fm: VkForgeModel, data: dict) -> dict:
         layouts.append(pipeline_layout)
         for pipeline in fm.Pipeline:
             references[pipeline.name] = 0 # only one pipeline layout
+    
+    # Scenario 2: Some Pipelines require empty pipeline layout
+    # Ensure all pipelines were assigned a layout
+    not_assigned = []
+    for pipeline in fm.Pipeline:
+        if not pipeline.name in references:
+            not_assigned.append(pipeline)
+    if not_assigned:
+        pipeline_layout = None # empty pipeline layout
+        layouts.append(pipeline_layout)
+        for pipeline in not_assigned:
+            references[pipeline.name] = len(layouts) - 1 # last added pipeline layout
 
     return {
         LAYOUT.LAYOUTS:    layouts,

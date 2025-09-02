@@ -455,6 +455,8 @@ def CreateCreateForgeLayout(ctx: VkForgeContext) -> str:
     content = """\
 VkForgeLayout* VkForge_CreateLayout(VkSurfaceKHR surface, VkPhysicalDevice physical_device, VkDevice device)
 {{
+    //QUESTION: Should be a singleton?
+
     assert(device);
 
     VkForgeLayout* layout = (VkForgeLayout*)SDL_malloc(sizeof(VkForgeLayout));
@@ -470,6 +472,15 @@ VkForgeLayout* VkForge_CreateLayout(VkSurfaceKHR surface, VkPhysicalDevice physi
     layout->surface = surface;
     layout->physical_device = physical_device;
     layout->device = device;
+
+    // Log the Pipeline Layout
+    SDL_Log("%u Pipeline Layouts:", VKFORGE_REFERENCED_LAYOUT_DESIGN.pipeline_layout_design_count);
+    for(uint32_t i = 0; i < VKFORGE_REFERENCED_LAYOUT_DESIGN.reference_count; i++)
+    {{
+        VkForgeLayoutReferenceDesign* ref = VKFORGE_REFERENCED_LAYOUT_DESIGN.reference_buffer[i];
+        SDL_Log("\\tPipeline Layout %u -> Pipeline %s", ref->pipeline_layout_design_index, ref->pipeline_name);
+    }}
+
     return layout;
 }}
 """
@@ -990,7 +1001,7 @@ void VkForge_QueueDescriptorResource(
     uint32_t pipeline_layout_index = FindPipelineLayoutIndex(pipelineName);
     if (pipeline_layout_index == UINT32_MAX || pipeline_layout_index >= VKFORGE_MAX_PIPELINE_LAYOUTS)
     {{
-        SDL_LogError(0, "Pipeline layout not found for pipeline: %s", pipelineName);
+        SDL_LogError(0, "Pipeline Layout not found for Pipeline: %s", pipelineName);
         exit(1);
     }}
 
@@ -1000,20 +1011,33 @@ void VkForge_QueueDescriptorResource(
 
     if (set >= pipeline_design->descriptorset_layout_design_count)
     {{
-        SDL_LogError(0, "Set %u out of bounds for pipeline layout %u", set, pipeline_layout_index);
+        SDL_LogError(0, "Set %u out of bounds for Pipeline Layout %u (max %u)", set, pipeline_layout_index, pipeline_design->descriptorset_layout_design_count);
         exit(1);
     }}
 
     const VkForgeLayoutDescriptorSetLayoutDesign* set_design =
         pipeline_design->descriptorset_layout_design_buffer[set];
 
+    if (!set_design)
+    {{
+        SDL_LogError(0, "There is no Set %u slot for Pipeline Layout %u", set, pipeline_layout_index);
+        exit(1);
+    }}
+
     if (binding >= set_design->bind_design_count)
     {{
-        SDL_LogError(0, "Binding %u out of bounds for set %u", binding, set);
+        SDL_LogError(0, "Binding %u out of bounds for Set %u (max %u) for Pipeline Layout %u", binding, set, set_design->bind_design_count, pipeline_layout_index);
         exit(1);
     }}
 
     const VkForgeLayoutBindDesign* bind_design = set_design->bind_design_buffer[binding];
+
+    if (!bind_design)
+    {{
+        SDL_LogError(0, "There is no Binding %u slot for Set %u for Pipeline Layout %u", binding, set, pipeline_layout_index);
+        exit(1);
+    }}
+
     VkDescriptorType expected_type = bind_design->type;
 
     // Validate resource based on descriptor type
@@ -1022,14 +1046,14 @@ void VkForge_QueueDescriptorResource(
         // Validate image resource
         if (resource.image.imageView == VK_NULL_HANDLE)
         {{
-            SDL_LogError(0, "ImageView cannot be null for image descriptor type");
+            SDL_LogError(0, "ImageView cannot be null for image descriptor type for Set %u Binding %u for Pipeline Layout %u", set, binding, pipeline_layout_index);
             exit(1);
         }}
         if ((expected_type == VK_DESCRIPTOR_TYPE_SAMPLER ||
              expected_type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) &&
             resource.image.sampler == VK_NULL_HANDLE)
         {{
-            SDL_LogError(0, "Sampler cannot be null for descriptor type %d", expected_type);
+            SDL_LogError(0, "Sampler cannot be null for descriptor type %s for Set %u Binding %u for Pipeline Layout %u", VkForge_StringifyDescriptorType(expected_type), set, binding, pipeline_layout_index);
             exit(1);
         }}
     }}
@@ -1038,7 +1062,7 @@ void VkForge_QueueDescriptorResource(
         // Validate buffer resource
         if (resource.buffer.buffer == VK_NULL_HANDLE)
         {{
-            SDL_LogError(0, "Buffer cannot be null for buffer descriptor type");
+            SDL_LogError(0, "Buffer cannot be null for buffer descriptor type for Set %u Binding %u for Pipeline Layout %u", set, binding, pipeline_layout_index);
             exit(1);
         }}
     }}
@@ -1080,7 +1104,7 @@ void VkForge_QueueDescriptorResource(
                     // Update Resource
                     layout->descriptor_resource_queue[i].resource = resource;
 
-                    SDL_Log("Queued Updated Resource for set %u binding %u", set, binding);
+                    SDL_Log("Updated Queued Resource for Set %u Binding %u for Pipeline Layout %u", set, binding, pipeline_layout_index);
                 }}
                 return;
             }}
@@ -1109,12 +1133,7 @@ void VkForge_QueueDescriptorResource(
 
     // Allocate Descriptorsets if they do not exist
     if(
-        layout->descriptorset_buffer[pipeline_layout_index]
-        [0] //TODO: Make More Efficient
-            //    : Is it possible that the first descriptorset is NULL by design?
-            //    : Need to check the design of complex layout
-            //    : Use a most efficient method to check like using design to determine which FIRST position to check
-        == VK_NULL_HANDLE
+        layout->descriptorset_buffer[pipeline_layout_index][set] == VK_NULL_HANDLE
     )
     {{
         VkForge_AllocateDescriptorSet(
@@ -1141,7 +1160,7 @@ void VkForge_QueueDescriptorResource(
     layout->descriptor_resource_queue[layout->descriptor_resource_queue_count].type = expected_type;
     layout->descriptor_resource_queue[layout->descriptor_resource_queue_count].count = bind_design->count;
 
-    SDL_Log("Queued Resource for set %u binding %u", set, binding);
+    SDL_Log("Queued Resource for Set %u Binding %u for Pipeline Layout %u", set, binding, pipeline_layout_index);
 
     layout->descriptor_resource_queue_count++;
 }}
