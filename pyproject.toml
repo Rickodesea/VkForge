@@ -5,7 +5,7 @@ description = "VkForge: A Vulkan User-End API Implementation Generator for Rende
 authors = [
     { name = "Alrick Grandison", email = "alrickgrandison@gmail.com" }
 ]
-license = { text = "MIT" }
+license = "MIT"
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
