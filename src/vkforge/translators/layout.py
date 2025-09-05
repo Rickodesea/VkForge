@@ -1217,7 +1217,7 @@ void VkForge_WriteDescriptorResources(VkForgeLayout* layout)
                 &layout->descriptor_resource_queue[i].resource.buffer;
         }}
 
-        SDL_Log("Preparing to Write Resource for set %u binding %u", entry->set, entry->binding);
+        SDL_Log("Preparing to Write Resource for Set %u Binding %u for Pipeline Layout %u", entry->set, entry->binding, entry->pipeline_layout_index);
     }}
 
     // Update all descriptor sets
