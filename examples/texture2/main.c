@@ -8,7 +8,7 @@
 #define UPDATE_TICKS (1000 / 120)
 #define DRAW_TICKS   (1000 / 60)
 
-static Entity   entities[24] = {0};
+static VisualRect   entities[24] = {0};
 static uint32_t entity_count = 0;
 
 typedef struct UserCallbackData UserCallbackData;;
@@ -33,7 +33,7 @@ static void CopyCallback(VkForgeRender render) {
     // vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 
-    Entity entity = {0};
+    VisualRect entity = {0};
     entity.color[0] = 1;
     entity.color[1] = 1;
     entity.color[2] = 1;
@@ -53,14 +53,14 @@ static void CopyCallback(VkForgeRender render) {
             render.device, 
             userData->stagingBuffer.memory, 
             0, 
-            sizeof(Entity) * entity_count, 
+            sizeof(VisualRect) * entity_count, 
             0, 
             &data
         );
         SDL_memcpy(
             data, 
             entities, 
-            sizeof(Entity) * entity_count
+            sizeof(VisualRect) * entity_count
         );
         vkUnmapMemory(render.device, userData->stagingBuffer.memory);
 
@@ -70,14 +70,14 @@ static void CopyCallback(VkForgeRender render) {
             userData->entityBuffer.buffer,
             0,
             0,
-            sizeof(Entity) * entity_count
+            sizeof(VisualRect) * entity_count
         );
 
         VkForge_CmdBufferBarrier(
             render.cmdbuf_copy,
             userData->entityBuffer.buffer,
             0,
-            sizeof(Entity) * entity_count,
+            sizeof(VisualRect) * entity_count,
             VK_ACCESS_2_TRANSFER_WRITE_BIT,
             VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT,
             VK_PIPELINE_STAGE_2_TRANSFER_BIT,

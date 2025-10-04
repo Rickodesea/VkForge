@@ -7,6 +7,10 @@ UserDefined:
   includes:
   - ../entity.h
 
+Platform:
+  Core:  SDL
+  Image: SDL
+
 Pipeline:
 - name: Default
   ShaderModule:
@@ -15,7 +19,7 @@ Pipeline:
   VertexInputBindingDescription: # Order of the list refer to the buffer binding. Ensure you bind your vertex buffers in the same order because that's how your generated pipeline codes expects them!
   - stride: sizeof(float) * 4 # must put the sizeof first; could also be a numeric int. If you update your shaders, ensure to remember to update this! Else error.
     first_location: 0
-  - stride:         Entity
+  - stride:         VisualRect
     first_location: 2 # If you update your shaders, ensure to remember to update this! Else error.
     input_rate: instance # unless specified, vertex input rate is assumed
     stride_members: # Optional description of members of type. You only need to specify as much needed and in the order

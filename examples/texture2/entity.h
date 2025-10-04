@@ -1,6 +1,6 @@
-typedef struct Entity Entity;
+typedef struct VisualRect VisualRect;
 
-struct Entity
+struct VisualRect
 {
     float color[4];
     float pos[2];

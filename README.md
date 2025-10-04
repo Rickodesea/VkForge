@@ -128,6 +128,7 @@ Help wanted on these features! Contribute via pull requests or ideas.
 - Alternative texture loading backends (stb_image)
 - 3D utility functions
 - Extended utility functions with pNext and pAllocator support ??
+- Ensure VkForge support both Graphs and Compute GPU activities
 
 ## Community & Contribution
 

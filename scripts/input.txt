@@ -1,30 +1,21 @@
-VkForgeLayout* VkForge_CreateLayout(VkSurfaceKHR surface, VkPhysicalDevice physical_device, VkDevice device)
-{
-    //QUESTION: Should be a singleton?
+VkForge_CreateCompatiblePipelineLayout(
+    VkForgeLayout* ForgeLayout, const char* PipelineName);
 
-    assert(device);
+VkForgePipelineLayout {
+    VkPipelineLayout pipelineLayout;
+    VkForgePipelineLayoutDesign* pipelineLayoutDesign;
+    VkForgePipelineLayoutDesignObject* pipelineLayoutDesignObject;
+};
 
-    VkForgeLayout* layout = (VkForgeLayout*)SDL_malloc(sizeof(VkForgeLayout));
-    if (!layout)
-    {
-        SDL_LogError(0, "Failed to allocate memory for VkForgeLayout");
-        exit(1);
-    }
+VkForge_IsPipelineLayoutCompatible(
+    VkForgeLayout* ForgeLayout, const char* PipelineName, 
+    VkForgePipelineLayout* ForgePipelineLayout)
 
-    // Initialize all counts to 0
-    SDL_memset(layout, 0, sizeof(VkForgeLayout));
+VkForgePipeline {
+    VkPipeline pipeline;
+};
 
-    layout->surface = surface;
-    layout->physical_device = physical_device;
-    layout->device = device;
-
-    // Log the Pipeline Layout
-    SDL_Log("%u Pipeline Layouts:", VKFORGE_REFERENCED_LAYOUT_DESIGN.pipeline_layout_design_count);
-    for(uint32_t i = 0; i < VKFORGE_REFERENCED_LAYOUT_DESIGN.reference_count; i++)
-    {
-        VkForgeLayoutReferenceDesign* ref = VKFORGE_REFERENCED_LAYOUT_DESIGN.reference_buffer[i];
-        SDL_Log("\tPipeline Layout %u -> Pipeline %s", ref->pipeline_layout_design_index, ref->pipeline_name);
-    }
-
-    return layout;
-}
+VkForge_CreateForgeGraphicsPipeline(VkForgeLayout* ForgeLayout, 
+    const char* PipelineName,
+    VkForgePipelineLayout ForgePipelineLayout
+)

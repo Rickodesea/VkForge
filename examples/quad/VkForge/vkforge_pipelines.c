@@ -62,7 +62,7 @@ VkPipeline VkForge_CreatePipelineForDefault
 		},
 		{
 			.binding = 1,
-			.stride = sizeof(Entity),
+			.stride = sizeof(VisualRect),
 			.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE,
 		},
 	};
@@ -80,19 +80,19 @@ VkPipeline VkForge_CreatePipelineForDefault
 			.binding = 1,
 			.location = 1,
 			.format = VK_FORMAT_R32G32B32A32_SFLOAT,
-			.offset = offsetof(Entity, color),
+			.offset = offsetof(VisualRect, color),
 		},
 		{
 			.binding = 1,
 			.location = 2,
 			.format = VK_FORMAT_R32G32_SFLOAT,
-			.offset = offsetof(Entity, pos),
+			.offset = offsetof(VisualRect, pos),
 		},
 		{
 			.binding = 1,
 			.location = 3,
 			.format = VK_FORMAT_R32G32_SFLOAT,
-			.offset = offsetof(Entity, size),
+			.offset = offsetof(VisualRect, size),
 		},
 	};
 	uint32_t attributeDescCount = 4;

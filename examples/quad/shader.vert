@@ -7,10 +7,10 @@
 // Quad vertices (0,0), (1,0), (1,1), (0,1)
 layout(location = 0) in vec2 inPosition;  // Binding at Vertex Buffer 0
 
-// Per-instance data (from the Entity struct)
-layout(location = 1) in vec4 inColor;     // Entity.color[4] // Binding at Vertex Buffer 1
-layout(location = 2) in vec2 inPos;       // Entity.pos[2]
-layout(location = 3) in vec2 inSize;      // Entity.size[2]
+// Per-instance data (from the VisualRect struct)
+layout(location = 1) in vec4 inColor;     // VisualRect.color[4] // Binding at Vertex Buffer 1
+layout(location = 2) in vec2 inPos;       // VisualRect.pos[2]
+layout(location = 3) in vec2 inSize;      // VisualRect.size[2]
 
 // Output to fragment shader
 layout(location = 0) out vec4 fragColor;
