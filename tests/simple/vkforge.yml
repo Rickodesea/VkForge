@@ -13,3 +13,27 @@ Pipeline:
       - input_rate: vertex
         stride: Vertex
         first_location: 0
+  - name: Simple2
+    ShaderModule:
+      - path: test.vert
+      - path: test.frag
+    VertexInputBindingDescription:
+      - input_rate: vertex
+        stride: Vertex
+        first_location: 0
+  - name: Simple3
+    ShaderModule:
+      - path: default.vert
+      - path: test.frag
+    VertexInputBindingDescription:
+      - input_rate: vertex
+        stride: Vertex
+        first_location: 0
+  - name: Simple4
+    ShaderModule:
+      - path: test.vert
+      - path: default.frag
+    VertexInputBindingDescription:
+      - input_rate: vertex
+        stride: Vertex
+        first_location: 0
