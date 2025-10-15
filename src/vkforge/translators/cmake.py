@@ -6,6 +6,7 @@ def CreateCMake(ctx: VkForgeContext):
         FILE.CORE,
         FILE.FUNC,
         FILE.LAYOUT_C,
+        FILE.LAYOUT_H,
         FILE.PIPELINE_C,
         FILE.PIPELINE_H,
         FILE.TYPE,

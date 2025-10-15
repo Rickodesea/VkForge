@@ -297,34 +297,7 @@ bool VkForge_IsDescriptorTypeBuffer(VkDescriptorType type);
 
 bool VkForge_IsDescriptorTypeImage(VkDescriptorType type);
 
-VkForgeLayout* VkForge_CreateLayout(VkSurfaceKHR surface, VkPhysicalDevice physical_device, VkDevice device);
-
-void VkForge_DestroyLayout(VkForgeLayout* forge_layout);
-
-void VkForge_BuildPipeline(VkForgeLayout* forge_layout, const char* pipeline_name);
-
-void VkForge_BindPipeline(VkForgeLayout* layout, const char* pipeline_name, VkCommandBuffer cmdbuf);
-
-VkPipeline VkForge_BorrowPipeline(VkForgeLayout* forge_layout, const char* pipeline_name);
-
-void VkForge_SharePipelineLayoutDetails(VkForgeLayout* forge_layout,
-    const char* pipeline_name,
-    VkPipelineLayout* outPipelineLayout,
-    uint32_t* outDescriptorSetLayoutCount,
-    VkDescriptorSetLayout* outDescriptorSetLayouts,
-    VkDescriptorSet* outDescriptorSets,
-    uint32_t* outDescriptorPoolSizeCount,
-    VkDescriptorPoolSize* outDescriptorPoolSizes);
-
-void VkForge_QueueDescriptorResource(VkForgeLayout* layout,
-    const char* pipelineName,
-    uint16_t set,
-    uint16_t binding,
-    VkForgeDescriptorResource resource);
-
-void VkForge_WriteDescriptorResources(VkForgeLayout* layout);
-
-void VkForge_ClearDescriptorResourceQueue(VkForgeLayout* layout);
+const char* VkForge_StringifyDescriptorType(VkDescriptorType descriptortype);
 
 
 

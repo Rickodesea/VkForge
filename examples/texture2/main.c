@@ -1,5 +1,6 @@
 #include "VkForge/vkforge_typedecls.h"
 #include "VkForge/vkforge_funcdecls.h"
+#include "VkForge/vkforge_layout.h"
 #include "entity.h"
 
 // This version uses the VkForge Layout to generate
@@ -11,12 +12,15 @@
 static VisualRect   entities[24] = {0};
 static uint32_t entity_count = 0;
 
-typedef struct UserCallbackData UserCallbackData;;
+typedef struct UserCallbackData UserCallbackData;
 static VkForgeTexture* texture;
 
 struct UserCallbackData //This is just an example. Another approach would to make these fields global.
 {
     VkForgeLayout* layout;
+    VkForgePipelineLayout pipelineLayout;
+    VkForgePipeline pipeline;
+    VkForgeLayoutQueue layoutQueue;
     float framerate;
     VkForgeBufferAlloc quadBuffer;
     VkForgeBufferAlloc entityBuffer; 
@@ -31,7 +35,6 @@ static void CopyCallback(VkForgeRender render) {
     /////////////////////////////////////////////////
     // Updated By External User Defined Draw Commands
     // vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
 
     VisualRect entity = {0};
     entity.color[0] = 1;
@@ -92,16 +95,19 @@ static void CopyCallback(VkForgeRender render) {
         VkForgeDescriptorResource resource = {0};
         resource.image = desImgInfo;
 
-        VkForge_QueueDescriptorResource
-        (
-            userData->layout,
-            "Default",
+        VkForge_QueueDescriptorResourceForForgePipelineLayout(
+            &userData->layoutQueue,
+            &userData->pipelineLayout,
             0,
             0,
             resource
         );
 
-        VkForge_WriteDescriptorResources(userData->layout);
+        VkForge_WriteDescriptorResourceQueueForCurrentlyBoundForgePipelineLayout(
+            userData->layout,
+            &userData->layoutQueue,
+            &userData->pipelineLayout
+        );
     }
 }
 
@@ -122,33 +128,18 @@ static void DrawCallback(VkForgeRender render) {
 
     if(entity_count)
     {
-        VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-        VkDescriptorSet descriptorsets[VKFORGE_MAX_DESCRIPTORSET_LAYOUTS] = {VK_NULL_HANDLE};
-        VkDescriptorSetLayout descriptorSetLayouts[VKFORGE_MAX_DESCRIPTORSET_LAYOUTS] = {0};
-
-        VkForge_SharePipelineLayoutDetails(
-            userData->layout, 
-            "Default",
-            &pipelineLayout,
-            NULL,
-            NULL,
-            descriptorsets,
-            NULL,
-            NULL
-        );
-
         vkCmdBindDescriptorSets(
             render.cmdbuf_draw, 
             VK_PIPELINE_BIND_POINT_GRAPHICS, 
-            pipelineLayout, 
+            userData->pipelineLayout.pipelineLayout, 
             0, 
-            1, descriptorsets, 
+            userData->pipelineLayout.descriptor_set_count, 
+            userData->pipelineLayout.descriptor_sets, 
             0, NULL
         );
 
-        VkForge_BindPipeline(userData->layout, "Default", render.cmdbuf_draw);
+        vkCmdBindPipeline(render.cmdbuf_draw, VK_PIPELINE_BIND_POINT_GRAPHICS, userData->pipeline.pipeline);
 
-        
         VkBuffer buffers[] = {
             userData->quadBuffer.buffer,   // Buffer 0: match the Config and Shader
             userData->entityBuffer.buffer  // Buffer 1: match the Config and Shader
@@ -190,19 +181,23 @@ int main() {
         exit(1);
     }
 
-    // Load VkForge Layout Feature
-    // It designs pipeline layouts based on all the pipelines in your Config
-    // It loads them as needed when you create your pipelines
-    VkForgeLayout* layout = VkForge_CreateLayout(
+    VkForgeLayout layoutHandle = {
         core->surface, 
         core->physical_device, 
         core->device
-    );
+    };
 
-    VkForge_BuildPipeline(layout, "Default");
+    VkForgeLayout* layout = &layoutHandle;
 
     UserCallbackData userData = {0};
     userData.layout = layout;
+    
+    // Create pipeline layout and pipeline using new API
+    userData.pipelineLayout = VkForge_CreateForgePipelineLayout(layout, "Default");
+    userData.pipeline = VkForge_CreateForgePipeline(layout, "Default", userData.pipelineLayout);
+    
+    // Initialize layout queue
+    userData.layoutQueue.descriptor_resource_queue_count = 0;
 
     // Temporary Command Buffer to use at initialization.
     // We will free after use since Render creates it own command buffers and pass those to the callbacks
@@ -222,8 +217,6 @@ int main() {
         1.0f,  1.0f,   1.0f, 1.0f, // top-right
         -1.0f,  1.0f,   0.0f, 1.0f  // top-left
     };
-
-
 
     userData.quadBuffer = VkForge_CreateBufferAlloc(
         core->physical_device,
@@ -292,7 +285,8 @@ int main() {
 
     if(!render) {
         SDL_LogError(0, "Failed to create renderer");
-        VkForge_DestroyLayout(layout); // Destroys all created pipelines, pipeline layouts and descriptorset layouts
+        VkForge_DestroyForgePipeline(layout, &userData.pipeline);
+        VkForge_DestroyForgePipelineLayout(layout, &userData.pipelineLayout);
         VkForge_DestroyCore(core); // Destroys all core objects.
         SDL_DestroyWindow(window);
         SDL_Quit();
@@ -337,7 +331,8 @@ int main() {
     VkForge_DestroyBufferAlloc(core->device, userData.entityBuffer);
     VkForge_DestroyBufferAlloc(core->device, userData.stagingBuffer);
     VkForge_DestroyRender(render);
-    VkForge_DestroyLayout(layout);
+    VkForge_DestroyForgePipeline(layout, &userData.pipeline);
+    VkForge_DestroyForgePipelineLayout(layout, &userData.pipelineLayout);
     VkForge_DestroyCore(core);
     SDL_DestroyWindow(window);
     SDL_Quit();

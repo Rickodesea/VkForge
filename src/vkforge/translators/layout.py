@@ -1012,6 +1012,263 @@ void VkForge_BindForgePipelineLayoutPerWriteDescriptorResourceQueue(
 """
     return content.format()
 
+def CreateCreateForgePipelineLayout(ctx: VkForgeContext) -> str:
+    content = """\
+VkForgePipelineLayout VkForge_CreateForgePipelineLayout(
+    VkForgeLayout* forgeLayout, 
+    const char* pipelineName)
+{{
+    assert(forgeLayout);
+    assert(pipelineName);
+
+    // Find the pipeline layout index for the given pipeline name
+    uint32_t pipeline_layout_index = FindPipelineLayoutIndex(pipelineName);
+    if (pipeline_layout_index == UINT32_MAX)
+    {{
+        SDL_LogError(0, "Pipeline layout not found for pipeline: %s", pipelineName);
+        exit(1);
+    }}
+
+    // Get the pipeline layout design
+    const VkForgeLayoutPipelineLayoutDesign* pipeline_design = 
+        VKFORGE_REFERENCED_LAYOUT_DESIGN.pipeline_layout_design_buffer[pipeline_layout_index];
+
+    VkForgePipelineLayout pipelineLayout = {{0}};
+    pipelineLayout.pipeline_layout_index = pipeline_layout_index;
+    pipelineLayout.design = (VkForgeLayoutPipelineLayoutDesign*)pipeline_design;
+    pipelineLayout.descriptor_set_count = pipeline_design->descriptorset_layout_design_count;
+
+    // Create descriptor set layouts
+    for (uint32_t i = 0; i < pipeline_design->descriptorset_layout_design_count; i++)
+    {{
+        const VkForgeLayoutDescriptorSetLayoutDesign* set_design = 
+            pipeline_design->descriptorset_layout_design_buffer[i];
+
+        VkResult result = CreateDescriptorSetLayout(
+            forgeLayout->device,
+            set_design,
+            &pipelineLayout.descriptor_set_layouts[i]
+        );
+
+        if (result != VK_SUCCESS)
+        {{
+            SDL_LogError(0, "Failed to create descriptor set layout %u: %d", i, result);
+            exit(1);
+        }}
+    }}
+
+    // Create pipeline layout
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = pipeline_design->descriptorset_layout_design_count,
+        .pSetLayouts = pipelineLayout.descriptor_set_layouts
+    }};
+
+    VkResult result = vkCreatePipelineLayout(
+        forgeLayout->device,
+        &pipelineLayoutInfo,
+        NULL,
+        &pipelineLayout.pipelineLayout
+    );
+
+    if (result != VK_SUCCESS)
+    {{
+        SDL_LogError(0, "Failed to create pipeline layout: %d", result);
+        exit(1);
+    }}
+
+    // Calculate descriptor pool requirements
+    uint32_t pool_size_count = 0;
+    VkDescriptorPoolSize pool_sizes[VKFORGE_MAX_DESCRIPTOR_BINDINGS] = {{0}};
+    
+    GetDescriptorPoolRequirements(pipeline_design, &pool_size_count, NULL);
+    GetDescriptorPoolRequirements(pipeline_design, NULL, pool_sizes);
+
+    // Create descriptor pool
+    VkDescriptorPoolCreateInfo poolInfo = {{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .maxSets = pipeline_design->descriptorset_layout_design_count,
+        .poolSizeCount = pool_size_count,
+        .pPoolSizes = pool_sizes
+    }};
+
+    result = vkCreateDescriptorPool(
+        forgeLayout->device,
+        &poolInfo,
+        NULL,
+        &pipelineLayout.descriptor_pool
+    );
+
+    if (result != VK_SUCCESS)
+    {{
+        SDL_LogError(0, "Failed to create descriptor pool: %d", result);
+        vkDestroyPipelineLayout(forgeLayout->device, pipelineLayout.pipelineLayout, NULL);
+        exit(1);
+    }}
+
+    // Allocate descriptor sets
+    VkDescriptorSetAllocateInfo allocInfo = {{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool = pipelineLayout.descriptor_pool,
+        .descriptorSetCount = pipeline_design->descriptorset_layout_design_count,
+        .pSetLayouts = pipelineLayout.descriptor_set_layouts
+    }};
+
+    result = vkAllocateDescriptorSets(
+        forgeLayout->device,
+        &allocInfo,
+        pipelineLayout.descriptor_sets
+    );
+
+    if (result != VK_SUCCESS)
+    {{
+        SDL_LogError(0, "Failed to allocate descriptor sets: %d", result);
+        vkDestroyDescriptorPool(forgeLayout->device, pipelineLayout.descriptor_pool, NULL);
+        vkDestroyPipelineLayout(forgeLayout->device, pipelineLayout.pipelineLayout, NULL);
+        exit(1);
+    }}
+
+    SDL_Log("Created pipeline layout for pipeline: %s", pipelineName);
+    return pipelineLayout;
+}}
+"""
+    return content.format()
+
+def CreateDestroyForgePipelineLayout(ctx: VkForgeContext) -> str:
+    content = """\
+void VkForge_DestroyForgePipelineLayout(
+    VkForgeLayout* forgeLayout, 
+    VkForgePipelineLayout* pipelineLayout)
+{{
+    assert(forgeLayout);
+    assert(pipelineLayout);
+
+    if (pipelineLayout->descriptor_pool != VK_NULL_HANDLE)
+    {{
+        vkDestroyDescriptorPool(forgeLayout->device, pipelineLayout->descriptor_pool, NULL);
+        pipelineLayout->descriptor_pool = VK_NULL_HANDLE;
+    }}
+
+    if (pipelineLayout->pipelineLayout != VK_NULL_HANDLE)
+    {{
+        vkDestroyPipelineLayout(forgeLayout->device, pipelineLayout->pipelineLayout, NULL);
+        pipelineLayout->pipelineLayout = VK_NULL_HANDLE;
+    }}
+
+    for (uint32_t i = 0; i < pipelineLayout->descriptor_set_count; i++)
+    {{
+        if (pipelineLayout->descriptor_set_layouts[i] != VK_NULL_HANDLE)
+        {{
+            vkDestroyDescriptorSetLayout(forgeLayout->device, pipelineLayout->descriptor_set_layouts[i], NULL);
+            pipelineLayout->descriptor_set_layouts[i] = VK_NULL_HANDLE;
+        }}
+    }}
+
+    pipelineLayout->descriptor_set_count = 0;
+    SDL_Log("Destroyed pipeline layout");
+}}
+"""
+    return content.format()
+
+def CreateIsForgePipelineLayoutCompatible(ctx: VkForgeContext) -> str:
+    content = """\
+bool VkForge_IsForgePipelineLayoutCompatible(
+    VkForgeLayout* forgeLayout,
+    const char* pipelineName,
+    VkForgePipelineLayout forgePipelineLayout)
+{{
+    assert(forgeLayout);
+    assert(pipelineName);
+
+    uint32_t pipeline_layout_index = FindPipelineLayoutIndex(pipelineName);
+    return (pipeline_layout_index != UINT32_MAX && 
+            pipeline_layout_index == forgePipelineLayout.pipeline_layout_index);
+}}
+"""
+    return content.format()
+
+def CreateCreateForgePipeline(ctx: VkForgeContext) -> str:
+    content = """\
+VkForgePipeline VkForge_CreateForgePipeline(
+    VkForgeLayout* forgeLayout,
+    const char* pipelineName,
+    VkForgePipelineLayout compatibleForgePipelineLayout)
+{{
+    assert(forgeLayout);
+    assert(pipelineName);
+
+    // Verify compatibility
+    if (!VkForge_IsForgePipelineLayoutCompatible(forgeLayout, pipelineName, compatibleForgePipelineLayout))
+    {{
+        SDL_LogError(0, "Pipeline layout is not compatible with pipeline: %s", pipelineName);
+        exit(1);
+    }}
+
+    // Find the pipeline function
+    const VkForgePipelineFunction* pipeline_func = FindPipelineFunction(pipelineName);
+    if (!pipeline_func)
+    {{
+        SDL_LogError(0, "Pipeline function not found for: %s", pipelineName);
+        exit(1);
+    }}
+
+    /// DYNAMIC RENDERING REQUIRED STRUCTURE ///
+    VkSurfaceFormatKHR surfaceFormat = VkForge_GetSurfaceFormat(
+        forgeLayout->surface,
+        forgeLayout->physical_device,
+        VK_FORMAT_B8G8R8A8_UNORM // Default format
+    );
+    
+    VkPipelineRenderingCreateInfo renderingInfo = {{0}};
+    renderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+    renderingInfo.viewMask = 0;
+    renderingInfo.colorAttachmentCount = 1;
+    renderingInfo.pColorAttachmentFormats = &surfaceFormat.format;
+    
+    ///*************************************///
+
+    // Create the pipeline
+    VkPipeline pipeline = pipeline_func->CreatePipelineForFunc(
+        NULL, // allocator
+        &renderingInfo, // next Vulkan 1.3 dynamic rendering
+        forgeLayout->device,
+        compatibleForgePipelineLayout.pipelineLayout
+    );
+
+    if (pipeline == VK_NULL_HANDLE)
+    {{
+        SDL_LogError(0, "Failed to create pipeline %s", pipelineName);
+        exit(1);
+    }}
+
+    VkForgePipeline result = {{0}};
+    result.pipeline = pipeline;
+    result.pipeline_index = pipeline_func->pipeline_index;
+
+    SDL_Log("Created pipeline: %s", pipelineName);
+    return result;
+}}
+"""
+    return content.format()
+
+def CreateDestroyForgePipeline(ctx: VkForgeContext) -> str:
+    content = """\
+void VkForge_DestroyForgePipeline(VkForgeLayout* forgeLayout, VkForgePipeline* pipeline)
+{{
+    assert(forgeLayout);
+    assert(pipeline);
+
+    if (pipeline->pipeline != VK_NULL_HANDLE)
+    {{
+        vkDestroyPipeline(forgeLayout->device, pipeline->pipeline, NULL);
+        pipeline->pipeline = VK_NULL_HANDLE;
+    }}
+
+    SDL_Log("Destroyed pipeline");
+}}
+"""
+    return content.format()
+
 def GetLayoutStrings(ctx: VkForgeContext):
     return [
         Create_LayoutMaxes(ctx),
@@ -1030,6 +1287,11 @@ def GetLayoutStrings(ctx: VkForgeContext):
         CreateWriteDescriptorResourceQueueForCurrentlyBoundForgePipelineLayout(ctx),
         CreateClearDescriptorResourceQueueFunctions(ctx),
         CreateBindForgePipelineLayoutPerWriteDescriptorResourceQueue(ctx),
+        CreateCreateForgePipelineLayout(ctx),
+        CreateDestroyForgePipelineLayout(ctx),
+        CreateIsForgePipelineLayoutCompatible(ctx),
+        CreateCreateForgePipeline(ctx),
+        CreateDestroyForgePipeline(ctx),
     ]
 
 ######################################################

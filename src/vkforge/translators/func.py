@@ -2,7 +2,6 @@ from vkforge.context import VkForgeContext
 from vkforge.mappings import *
 from .core import GetCoreStrings
 from .util import GetUtilStrings
-from .layout import GetLayoutStrings
 import re
 
 def CreateVoidEnum(ctx: VkForgeContext) -> str:
@@ -83,7 +82,6 @@ def CreateDeclarations(ctx: VkForgeContext) -> str:
     all_content = []
     all_content.extend(GetCoreStrings(ctx))
     all_content.extend(GetUtilStrings(ctx))
-    all_content.extend(GetLayoutStrings(ctx))
     
     # Process each content block
     for content in all_content:
