@@ -217,16 +217,24 @@ static VkForgeReferencedLayoutDesign VKFORGE_REFERENCED_LAYOUT_DESIGN =
         # Generate all the static components
         static_components = GetStaticSubComponents(layouts, references)
         
+        # Filter out empty components
+        filtered_components = {}
+        for key, value in static_components.items():
+            if value and value.strip():
+                filtered_components[key] = value
+            else:
+                filtered_components[key] = ""
+        
         output = content.format(
-            static_arrays=static_components['static_arrays'],
-            static_bind_designs=static_components['static_bind_designs'],
-            static_descriptor_set_layouts=static_components['static_descriptor_set_layouts'],
-            static_pipeline_layouts=static_components['static_pipeline_layouts'],
-            static_references=static_components['static_references'],
+            static_arrays=filtered_components['static_arrays'],
+            static_bind_designs=filtered_components['static_bind_designs'],
+            static_descriptor_set_layouts=filtered_components['static_descriptor_set_layouts'],
+            static_pipeline_layouts=filtered_components['static_pipeline_layouts'],
+            static_references=filtered_components['static_references'],
             pipeline_layout_design_count=len(layouts),
-            pipeline_layout_design_buffer="PIPELINE_LAYOUT_DESIGNS",
+            pipeline_layout_design_buffer="PIPELINE_LAYOUT_DESIGNS" if layouts else "NULL",
             reference_count=len(references),
-            reference_buffer="REFERENCES"
+            reference_buffer="REFERENCES" if references else "NULL"
         )
     else:
         output = content.format(
@@ -253,9 +261,13 @@ def GetStaticSubComponents(layouts, references):
         'static_references': ""
     }
     
-    # Generate stage arrays
+    # Generate unique stage arrays and mapping
+    stage_signatures = {}  # stage_list -> unique_name
+    stage_mappings = {}    # original_name -> unique_name
     stage_arrays = []
-    stage_index = 0
+    stage_counter = 0
+    
+    # First pass: collect all unique stage combinations
     for layout_idx, layout in enumerate(layouts):
         if layout:
             for set_idx, set1 in enumerate(layout):
@@ -263,17 +275,34 @@ def GetStaticSubComponents(layouts, references):
                     for bind_idx, bind in enumerate(set1):
                         if bind:  # Only for non-empty bindings
                             _, _, stages = bind
-                            stages = [map_value(SHADER_STAGE_MAP, stage) for stage in stages]
-                            stage_arrays.append(f"static uint32_t STAGE_{layout_idx}_{set_idx}_{bind_idx}[] = {{ {', '.join(map(str, stages))} }};")
-                            stage_index += 1
-        else:
-            stage_arrays.append("/** NO STAGES **/")
-
-    components['static_arrays'] = "\n".join(stage_arrays)
+                            # Convert stages to sorted tuple for uniqueness
+                            stages_tuple = tuple(sorted([map_value(SHADER_STAGE_MAP, stage) for stage in stages]))
+                            
+                            if stages_tuple not in stage_signatures:
+                                unique_name = f"STAGE_UNIT_{stage_counter:02d}"
+                                stage_signatures[stages_tuple] = unique_name
+                                stage_arrays.append(f"static uint32_t {unique_name}[] = {{ {', '.join(map(str, stages_tuple))} }};")
+                                stage_counter += 1
+                            
+                            # Map original name to unique name
+                            original_name = f"STAGE_{layout_idx}_{set_idx}_{bind_idx}"
+                            stage_mappings[original_name] = stage_signatures[stages_tuple]
     
+    # Generate stage arrays and macros
+    if stage_arrays:
+        components['static_arrays'] = "\n".join(stage_arrays)
+        
+        # Generate macro mappings
+        macro_mappings = []
+        for original_name, unique_name in stage_mappings.items():
+            macro_mappings.append(f"#define {original_name} {unique_name}")
+        
+        components['static_arrays'] += "\n\n" + "\n".join(macro_mappings)
+
     # Generate bind designs
     bind_designs = []
     bind_design_arrays = []
+    
     for layout_idx, layout in enumerate(layouts):
         if layout:
             for set_idx, set1 in enumerate(layout):
@@ -281,27 +310,28 @@ def GetStaticSubComponents(layouts, references):
                 if set1:
                     for bind_idx, bind in enumerate(set1):
                         if bind:
-                            type1, count, _ = bind
+                            type1, count, stages = bind
                             type1 = map_value(DESCRIPTOR_TYPE_MAP, type1)
+                            # Use the mapped stage name via macro
+                            stage_name = f"STAGE_{layout_idx}_{set_idx}_{bind_idx}"
                             bind_designs.append(
-                                f"static VkForgeLayoutBindDesign BIND_{layout_idx}_{set_idx}_{bind_idx} = {{\n"
-                                f"    {type1}, {count}, {len(stages)}, STAGE_{layout_idx}_{set_idx}_{bind_idx}\n"
+                                "static VkForgeLayoutBindDesign BIND_" + f"{layout_idx}_{set_idx}_{bind_idx}" + " = {\n" +
+                                f"    {type1}, {count}, {len(stages)}, {stage_name}\n" +
                                 "};"
                             )
-                            set_bind_designs.append(f"&BIND_{layout_idx}_{set_idx}_{bind_idx}")
+                            set_bind_designs.append("&BIND_" + f"{layout_idx}_{set_idx}_{bind_idx}")
                         else:
                             set_bind_designs.append("NULL")
                     
                     # Create array for this set's bind designs
                     bind_design_arrays.append(
-                        f"static VkForgeLayoutBindDesign* BIND_DESIGNS_{layout_idx}_{set_idx}[] = {{\n"
-                        f"    {', '.join(set_bind_designs)}\n"
+                        "static VkForgeLayoutBindDesign* BIND_DESIGNS_" + f"{layout_idx}_{set_idx}" + "[] = {\n" +
+                        "    " + ", ".join(set_bind_designs) + "\n" +
                         "};"
                     )
-        else:
-            bind_design_arrays.append("/** NO BINDING **/")
     
-    components['static_bind_designs'] = "\n".join(bind_designs + bind_design_arrays)
+    if bind_designs or bind_design_arrays:
+        components['static_bind_designs'] = "\n".join(bind_designs + bind_design_arrays)
     
     # Generate descriptor set layouts
     descriptor_set_layouts = []
@@ -312,63 +342,72 @@ def GetStaticSubComponents(layouts, references):
             for set_idx, set1 in enumerate(layout):
                 if set1:
                     descriptor_set_layouts.append(
-                        f"static VkForgeLayoutDescriptorSetLayoutDesign DESCRIPTOR_SET_LAYOUT_{layout_idx}_{set_idx} = {{\n"
-                        f"    {len(set1)}, BIND_DESIGNS_{layout_idx}_{set_idx}\n"
+                        "static VkForgeLayoutDescriptorSetLayoutDesign DESCRIPTOR_SET_LAYOUT_" + f"{layout_idx}_{set_idx}" + " = {\n" +
+                        f"    {len(set1)}, BIND_DESIGNS_{layout_idx}_{set_idx}\n" +
                         "};"
                     )
-                    layout_descriptor_sets.append(f"&DESCRIPTOR_SET_LAYOUT_{layout_idx}_{set_idx}")
+                    layout_descriptor_sets.append("&DESCRIPTOR_SET_LAYOUT_" + f"{layout_idx}_{set_idx}")
             
             # Create array for this layout's descriptor sets
-            descriptor_set_layout_arrays.append(
-                f"static VkForgeLayoutDescriptorSetLayoutDesign* DESCRIPTOR_SET_LAYOUTS_{layout_idx}[] = {{\n"
-                f"    {', '.join(layout_descriptor_sets) if layout_descriptor_sets else "0, NULL"}\n"
+            if layout_descriptor_sets:
+                descriptor_set_layout_arrays.append(
+                    "static VkForgeLayoutDescriptorSetLayoutDesign* DESCRIPTOR_SET_LAYOUTS_" + f"{layout_idx}" + "[] = {\n" +
+                    "    " + ", ".join(layout_descriptor_sets) + "\n" +
+                    "};"
+                )
+    
+    if descriptor_set_layouts or descriptor_set_layout_arrays:
+        components['static_descriptor_set_layouts'] = "\n".join(descriptor_set_layouts + descriptor_set_layout_arrays)
+    
+    # Generate pipeline layouts - FIXED: Generate for ALL layouts, not just non-empty ones
+    pipeline_layouts = []
+    pipeline_layout_entries = []
+    
+    for layout_idx, layout in enumerate(layouts):
+        # Always generate pipeline layout, even if empty
+        if layout:  # If layout has descriptor sets
+            pipeline_layouts.append(
+                "static VkForgeLayoutPipelineLayoutDesign PIPELINE_LAYOUT_" + f"{layout_idx}" + " = {\n" +
+                f"    {len(layout)}, DESCRIPTOR_SET_LAYOUTS_{layout_idx}\n" +
                 "};"
             )
-        else:
-            descriptor_set_layout_arrays.append("/** NO DESCRIPTORSET LAYOUTS **/")
+        else:  # If layout is empty
+            pipeline_layouts.append(
+                "static VkForgeLayoutPipelineLayoutDesign PIPELINE_LAYOUT_" + f"{layout_idx}" + " = {\n" +
+                "    0, NULL\n" +
+                "};"
+            )
+        pipeline_layout_entries.append("&PIPELINE_LAYOUT_" + f"{layout_idx}")
     
-    components['static_descriptor_set_layouts'] = "\n".join(descriptor_set_layouts + descriptor_set_layout_arrays)
-    
-    # Generate pipeline layouts
-    pipeline_layouts = []
-    for layout_idx, layout in enumerate(layouts):
-        layout_str = ""
-        layout_str += f"static VkForgeLayoutPipelineLayoutDesign PIPELINE_LAYOUT_{layout_idx} = {{\n"
-        if layout:
-            layout_str += f"    {len(layout)}, DESCRIPTOR_SET_LAYOUTS_{layout_idx}\n"
-        else:
-            layout_str += f"    0, NULL\n"
-        layout_str +=  "};"
-        pipeline_layouts.append(
-            layout_str
+    # Create array of all pipeline layouts - FIXED: Always generate the array
+    if pipeline_layouts:
+        pipeline_layout_array = (
+            "static VkForgeLayoutPipelineLayoutDesign* PIPELINE_LAYOUT_DESIGNS[] = {\n" +
+            "    " + ",\n    ".join(pipeline_layout_entries) + "\n" +
+            "};"
         )
-    
-    # Create array of all pipeline layouts
-    pipeline_layout_array = (
-        "static VkForgeLayoutPipelineLayoutDesign* PIPELINE_LAYOUT_DESIGNS[] = {{\n"
-        "    " + ",\n    ".join([f"&PIPELINE_LAYOUT_{i}" for i in range(len(layouts))]) + "\n"
-        "}};"
-    )
-    
-    components['static_pipeline_layouts'] = "\n".join(pipeline_layouts) + "\n" + pipeline_layout_array
+        components['static_pipeline_layouts'] = "\n".join(pipeline_layouts) + "\n" + pipeline_layout_array
     
     # Generate references
     references_list = []
+    references_entries = []
+    
     for i, (key, val) in enumerate(references.items()):
         references_list.append(
-            f"static VkForgeLayoutReferenceDesign REFERENCE_{i} = {{\n"
-            f"    {val}, \"{key}\"\n"
+            "static VkForgeLayoutReferenceDesign REFERENCE_" + f"{i}" + " = {\n" +
+            f"    {val}, \"{key}\"\n" +
             "};"
         )
+        references_entries.append("&REFERENCE_" + f"{i}")
     
     # Create array of references
-    references_array = (
-        "static VkForgeLayoutReferenceDesign* REFERENCES[] = {{\n"
-        "    " + ",\n    ".join([f"&REFERENCE_{i}" for i in range(len(references))]) + "\n"
-        "}};"
-    )
-    
-    components['static_references'] = "\n".join(references_list) + "\n" + references_array
+    if references_list:
+        references_array = (
+            "static VkForgeLayoutReferenceDesign* REFERENCES[] = {\n" +
+            "    " + ",\n    ".join(references_entries) + "\n" +
+            "};"
+        )
+        components['static_references'] = "\n".join(references_list) + "\n" + references_array
     
     return components
 
@@ -410,7 +449,7 @@ static uint32_t VKFORGE_PIPELINE_FUNCTION_COUNT = {pipeline_count};
             "static VkForgePipelineFunction* PIPELINE_FUNCTIONS[] = {{\n"
             "    " + ",\n    ".join([f"&PIPELINE_FUNC_{i}" for i in range(len(ctx.forgeModel.Pipeline))]) + "\n"
             "}};"
-        )
+        ).format()
         
         output = content.format(
             static_pipeline_functions="\n".join(pipeline_funcs) + "\n" + pipeline_array,

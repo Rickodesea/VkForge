@@ -16,6 +16,21 @@ VkPipeline VkForge_CreatePipelineForSimple(VkAllocationCallbacks* allocator,
     VkDevice device,
     VkPipelineLayout pipeline_layout);
 
+VkPipeline VkForge_CreatePipelineForSimple2(VkAllocationCallbacks* allocator,
+    void* next,
+    VkDevice device,
+    VkPipelineLayout pipeline_layout);
+
+VkPipeline VkForge_CreatePipelineForSimple3(VkAllocationCallbacks* allocator,
+    void* next,
+    VkDevice device,
+    VkPipelineLayout pipeline_layout);
+
+VkPipeline VkForge_CreatePipelineForSimple4(VkAllocationCallbacks* allocator,
+    void* next,
+    VkDevice device,
+    VkPipelineLayout pipeline_layout);
+
 
 
 #ifdef __cplusplus

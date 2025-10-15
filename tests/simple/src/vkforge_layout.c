@@ -52,31 +52,98 @@ struct VkForgeReferencedLayoutDesign
     VkForgeLayoutReferenceDesign** reference_buffer;
 };
 
-/** NO STAGES **/
+static uint32_t STAGE_UNIT_00[] = { VK_SHADER_STAGE_VERTEX_BIT };
+static uint32_t STAGE_UNIT_01[] = { VK_SHADER_STAGE_FRAGMENT_BIT };
 
-/** NO BINDING **/
+#define STAGE_0_0_0 STAGE_UNIT_00
+#define STAGE_0_0_1 STAGE_UNIT_00
+#define STAGE_0_0_2 STAGE_UNIT_00
+#define STAGE_0_0_3 STAGE_UNIT_01
+#define STAGE_0_0_4 STAGE_UNIT_01
+#define STAGE_0_0_7 STAGE_UNIT_01
+#define STAGE_0_0_8 STAGE_UNIT_01
+#define STAGE_0_1_1 STAGE_UNIT_00
+#define STAGE_0_1_5 STAGE_UNIT_01
 
-/** NO DESCRIPTORSET LAYOUTS **/
+static VkForgeLayoutBindDesign BIND_0_0_0 = {
+    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, 1, STAGE_0_0_0
+};
+static VkForgeLayoutBindDesign BIND_0_0_1 = {
+    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, 1, STAGE_0_0_1
+};
+static VkForgeLayoutBindDesign BIND_0_0_2 = {
+    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4, 1, STAGE_0_0_2
+};
+static VkForgeLayoutBindDesign BIND_0_0_3 = {
+    VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, 1, STAGE_0_0_3
+};
+static VkForgeLayoutBindDesign BIND_0_0_4 = {
+    VK_DESCRIPTOR_TYPE_SAMPLER, 1, 1, STAGE_0_0_4
+};
+static VkForgeLayoutBindDesign BIND_0_0_7 = {
+    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, 1, STAGE_0_0_7
+};
+static VkForgeLayoutBindDesign BIND_0_0_8 = {
+    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, 1, STAGE_0_0_8
+};
+static VkForgeLayoutBindDesign BIND_0_1_1 = {
+    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, 1, STAGE_0_1_1
+};
+static VkForgeLayoutBindDesign BIND_0_1_5 = {
+    VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, 1, STAGE_0_1_5
+};
+static VkForgeLayoutBindDesign* BIND_DESIGNS_0_0[] = {
+    &BIND_0_0_0, &BIND_0_0_1, &BIND_0_0_2, &BIND_0_0_3, &BIND_0_0_4, NULL, NULL, &BIND_0_0_7, &BIND_0_0_8
+};
+static VkForgeLayoutBindDesign* BIND_DESIGNS_0_1[] = {
+    NULL, &BIND_0_1_1, NULL, NULL, NULL, &BIND_0_1_5, NULL, NULL
+};
+
+static VkForgeLayoutDescriptorSetLayoutDesign DESCRIPTOR_SET_LAYOUT_0_0 = {
+    9, BIND_DESIGNS_0_0
+};
+static VkForgeLayoutDescriptorSetLayoutDesign DESCRIPTOR_SET_LAYOUT_0_1 = {
+    8, BIND_DESIGNS_0_1
+};
+static VkForgeLayoutDescriptorSetLayoutDesign* DESCRIPTOR_SET_LAYOUTS_0[] = {
+    &DESCRIPTOR_SET_LAYOUT_0_0, &DESCRIPTOR_SET_LAYOUT_0_1
+};
 
 static VkForgeLayoutPipelineLayoutDesign PIPELINE_LAYOUT_0 = {
+    2, DESCRIPTOR_SET_LAYOUTS_0
+};
+static VkForgeLayoutPipelineLayoutDesign PIPELINE_LAYOUT_1 = {
     0, NULL
 };
-static VkForgeLayoutPipelineLayoutDesign* PIPELINE_LAYOUT_DESIGNS[] = {{
-    &PIPELINE_LAYOUT_0
-}};
+static VkForgeLayoutPipelineLayoutDesign* PIPELINE_LAYOUT_DESIGNS[] = {
+    &PIPELINE_LAYOUT_0,
+    &PIPELINE_LAYOUT_1
+};
 
 static VkForgeLayoutReferenceDesign REFERENCE_0 = {
-    0, "Simple"
+    0, "Simple2"
 };
-static VkForgeLayoutReferenceDesign* REFERENCES[] = {{
-    &REFERENCE_0
-}};
+static VkForgeLayoutReferenceDesign REFERENCE_1 = {
+    0, "Simple3"
+};
+static VkForgeLayoutReferenceDesign REFERENCE_2 = {
+    0, "Simple4"
+};
+static VkForgeLayoutReferenceDesign REFERENCE_3 = {
+    1, "Simple"
+};
+static VkForgeLayoutReferenceDesign* REFERENCES[] = {
+    &REFERENCE_0,
+    &REFERENCE_1,
+    &REFERENCE_2,
+    &REFERENCE_3
+};
 
 static VkForgeReferencedLayoutDesign VKFORGE_REFERENCED_LAYOUT_DESIGN = 
 {
-    1,
+    2,
     PIPELINE_LAYOUT_DESIGNS,
-    1,
+    4,
     REFERENCES
 };
 
@@ -98,12 +165,30 @@ static VkForgePipelineFunction PIPELINE_FUNC_0 = {
     "Simple",
     0
 };
-static VkForgePipelineFunction* PIPELINE_FUNCTIONS[] = {{
-    &PIPELINE_FUNC_0
-}};
+static VkForgePipelineFunction PIPELINE_FUNC_1 = {
+    VkForge_CreatePipelineForSimple2,
+    "Simple2",
+    1
+};
+static VkForgePipelineFunction PIPELINE_FUNC_2 = {
+    VkForge_CreatePipelineForSimple3,
+    "Simple3",
+    2
+};
+static VkForgePipelineFunction PIPELINE_FUNC_3 = {
+    VkForge_CreatePipelineForSimple4,
+    "Simple4",
+    3
+};
+static VkForgePipelineFunction* PIPELINE_FUNCTIONS[] = {
+    &PIPELINE_FUNC_0,
+    &PIPELINE_FUNC_1,
+    &PIPELINE_FUNC_2,
+    &PIPELINE_FUNC_3
+};
 
 static VkForgePipelineFunction** VKFORGE_PIPELINE_FUNCTIONS = PIPELINE_FUNCTIONS;
-static uint32_t VKFORGE_PIPELINE_FUNCTION_COUNT = 1;
+static uint32_t VKFORGE_PIPELINE_FUNCTION_COUNT = 4;
 
 VkForgeLayout* VkForge_CreateForgeLayout
 (
