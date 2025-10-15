@@ -7,7 +7,8 @@
 #include "vkforge_funcdecls.h"
 
 /** NO USER INCLUDES **/
-/** NO USER DECLARATIONS **/
+typedef struct {int x; int y} Vertex;
+
 
 void VkForge_CreateInstance
 (

@@ -1,10 +1,15 @@
 ID: VkForge 0.5 
 
+UserDefined:
+  insertions:
+  - typedef struct {int x; int y} Vertex;
+
 Pipeline:
   - name: Simple
     ShaderModule:
       - path: default.vert
       - path: default.frag
     VertexInputBindingDescription:
-      - stride: Vertex
+      - input_rate: vertex
+        stride: Vertex
         first_location: 0

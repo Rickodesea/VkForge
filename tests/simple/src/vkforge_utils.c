@@ -9,7 +9,8 @@
 #include <SDL3_image/SDL_image.h>
 
 /** NO USER INCLUDES **/
-/** NO USER DECLARATIONS **/
+typedef struct {int x; int y} Vertex;
+
 
 VkDebugUtilsMessengerCreateInfoEXT VkForge_GetDebugUtilsMessengerCreateInfo()
 {

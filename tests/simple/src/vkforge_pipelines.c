@@ -7,7 +7,8 @@
 #include "vkforge_funcdecls.h"
 
 /** NO USER INCLUDES **/
-/** NO USER DECLARATIONS **/
+typedef struct {int x; int y} Vertex;
+
 
 VkPipeline VkForge_CreatePipelineForSimple
 (

@@ -9,7 +9,8 @@
 #include "vkforge_layout.h"
 
 /** NO USER INCLUDES **/
-/** NO USER DECLARATIONS **/
+typedef struct {int x; int y} Vertex;
+
 
 
 typedef struct VkForgeLayoutBindDesign VkForgeLayoutBindDesign;

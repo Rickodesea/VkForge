@@ -210,13 +210,13 @@ class VkVertexInputBindingDescriptionModel(BaseModel):
         default=None,
         description="List of all members of the type in declaration order. If you omit this, then VkForge will attempt to calculate the offset. Otherwise, VkForge will use the listed members and the type to get the offset. The name must match the type used in the stride",
     )
-    input_rate: Optional[Literal[
+    input_rate: Literal[
         "VK_VERTEX_INPUT_RATE_VERTEX",
         "VK_VERTEX_INPUT_RATE_INSTANCE",
         "vertex", 
         "instance"
-    ]] = Field(
-        default="VK_VERTEX_INPUT_RATE_VERTEX", description="Input rate for the binding."
+    ] = Field(
+        ..., description="Input rate for the binding."
     )
     first_location: int = Field(
         ..., description="First location index in the shader input."
@@ -651,3 +651,35 @@ class VkForgeModel(BaseModel):
         if data["ID"] != "VkForge 0.5":
             raise ValueError("Invalid VkForge Config")
         return data
+    
+    @model_validator(mode="after")
+    def validate_user_defined_for_type_stride(self):
+        """Ensure UserDefined is defined when stride uses a TYPE."""
+        user_defined = self.UserDefined
+
+        # Collect all VertexInputBindingDescriptions from all pipelines
+        all_bindings = []
+        for pipeline in self.Pipeline:
+            all_bindings.extend(pipeline.VertexInputBindingDescription)
+
+        # Check if any stride_kind == "TYPE"
+        has_type_stride = any(
+            binding.stride_kind == "TYPE" for binding in all_bindings
+        )
+
+        if has_type_stride:
+            # Must have UserDefined with either includes or insertions
+            if (
+                user_defined is None
+                or (
+                    not user_defined.includes
+                    and not user_defined.insertions
+                )
+            ):
+                raise ValueError(
+                    "UserDefined.includes or UserDefined.insertions must be defined "
+                    "because at least one VertexInputBindingDescription uses a user-defined TYPE stride."
+                )
+
+        return self
+
