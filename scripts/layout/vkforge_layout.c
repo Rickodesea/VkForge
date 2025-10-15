@@ -1,57 +1,119 @@
-#include <vulkan/vulkan.h>
-#include "../examples/texture2/VkForge/vkforge_typedecls.h"
-#include "../examples/texture2/VkForge/vkforge_funcdecls.h"
-#include "../examples/texture2/VkForge/vkforge_layout.c"
+#include "vkforge_layout.h"
+#include "vkforge_funcdecls.h"
 
-/** TYPE DEFINITIONS **/
-typedef struct VkForgePipelineLayout VkForgePipelineLayout;
-typedef struct VkForgePipeline       VkForgePipeline;
+// Internal Declaration
+typedef struct VkForgeLayoutBindDesign                VkForgeLayoutBindDesign;
+typedef struct VkForgeLayoutDescriptorSetLayoutDesign VkForgeLayoutDescriptorSetLayoutDesign;
+typedef struct VkForgeLayoutPipelineLayoutDesign      VkForgeLayoutPipelineLayoutDesign;
+typedef struct VkForgeLayoutReferenceDesign           VkForgeLayoutReferenceDesign;
+typedef struct VkForgeReferencedLayoutDesign          VkForgeReferencedLayoutDesign;
+typedef struct VkForgePipelineFunction                VkForgePipelineFunction;
 
-struct VkForgePipelineLayout
+struct VkForgeLayoutBindDesign
 {
-    VkPipelineLayout                   pipelineLayout;
-    VkForgeLayoutPipelineLayoutDesign* design;
-    uint32_t                           pipeline_layout_index;
-    uint8_t                            descriptor_set_count;
-    VkDescriptorSetLayout              descriptor_set_layouts[VKFORGE_MAX_DESCRIPTORSET_LAYOUTS];
-    VkDescriptorSet                    descriptor_sets[VKFORGE_MAX_DESCRIPTORSET_LAYOUTS];
-    VkDescriptorPool                   descriptor_pool;
+    uint32_t  type;
+    uint32_t  count;
+    uint32_t  mode_count;
+    uint32_t* mode_buffer;
 };
 
-struct VkForgePipeline
+struct VkForgeLayoutDescriptorSetLayoutDesign
 {
-    VkPipeline pipeline;
-    uint32_t   pipeline_index;
+    uint32_t                  bind_design_count;
+    VkForgeLayoutBindDesign** bind_design_buffer;
 };
-
-struct VkForgeLayout
-{
-    VkSurfaceKHR          surface;
-    VkPhysicalDevice      physical_device;
-    VkDevice              device;
     
-    VkForgeDescriptorResourceQueue descriptor_resource_queue[VKFORGE_MAX_DESCRIPTOR_RESOURCES];
-    VkWriteDescriptorSet           write_descriptor_set     [VKFORGE_MAX_DESCRIPTOR_RESOURCES];
-    uint32_t                       descriptor_resource_queue_count;
+struct VkForgeLayoutPipelineLayoutDesign
+{
+    uint32_t                                 descriptorset_layout_design_count;
+    VkForgeLayoutDescriptorSetLayoutDesign** descriptorset_layout_design_buffer;
 };
 
+struct VkForgeLayoutReferenceDesign
+{
+    uint32_t    pipeline_layout_design_index; 
+    const char* pipeline_name;
+};
 
-// Function declarations for the new API
-VkForgePipelineLayout VkForge_CreateForgePipelineLayout      (VkForgeLayout* forgeLayout, const char* pipelineName);
-void                  VkForge_DestroyForgePipelineLayout     (VkForgeLayout* forgeLayout, VkForgePipelineLayout* pipelineLayout);
-bool                  VkForge_IsForgePipelineLayoutCompatible(VkForgeLayout* forgeLayout, const char* pipelineName, VkForgePipelineLayout forgePipelineLayout);
-VkForgePipeline       VkForge_CreateForgePipeline            (VkForgeLayout* forgeLayout, const char* pipelineName, VkForgePipelineLayout compatibleForgePipelineLayout);
-void                  VkForge_DestroyForgePipeline           (VkForgeLayout* forgeLayout, VkForgePipeline* pipeline);
+struct VkForgeReferencedLayoutDesign
+{
+    uint32_t                            pipeline_layout_design_count;
+    VkForgeLayoutPipelineLayoutDesign** pipeline_layout_design_buffer;
+    uint32_t                            reference_count;
+    VkForgeLayoutReferenceDesign**      reference_buffer;
+};
 
-#include <assert.h>
-#include <vulkan/vulkan.h>
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_vulkan.h>
+struct VkForgePipelineFunction
+{
+    VkPipeline (*CreatePipelineForFunc)(
+        VkAllocationCallbacks* allocator,
+        void* next,
+        VkDevice device,
+        VkPipelineLayout pipeline_layout
+    );
+    const char* pipeline_name;
+    uint32_t pipeline_index;
+};
 
+// Generated Definition
+static uint32_t STAGE_0_0_0[] = { VK_SHADER_STAGE_FRAGMENT_BIT };
 
-/** FUNCTION IMPLEMENTATIONS **/
+static VkForgeLayoutBindDesign BIND_0_0_0 = {
+    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, 1, STAGE_0_0_0
+};
+static VkForgeLayoutBindDesign* BIND_DESIGNS_0_0[] = {
+    &BIND_0_0_0
+};
 
-VkForgeLayout* VkForge_CreateForgeLayout(VkSurfaceKHR surface, VkPhysicalDevice physical_device, VkDevice device)
+static VkForgeLayoutDescriptorSetLayoutDesign DESCRIPTOR_SET_LAYOUT_0_0 = {
+    1, BIND_DESIGNS_0_0
+};
+static VkForgeLayoutDescriptorSetLayoutDesign* DESCRIPTOR_SET_LAYOUTS_0[] = {
+    &DESCRIPTOR_SET_LAYOUT_0_0
+};
+
+static VkForgeLayoutPipelineLayoutDesign PIPELINE_LAYOUT_0 = {
+    1, DESCRIPTOR_SET_LAYOUTS_0
+};
+static VkForgeLayoutPipelineLayoutDesign* PIPELINE_LAYOUT_DESIGNS[] = {
+    &PIPELINE_LAYOUT_0
+};
+
+static VkForgeLayoutReferenceDesign REFERENCE_0 = {
+    0, "Default"
+};
+static VkForgeLayoutReferenceDesign* REFERENCES[] = {
+    &REFERENCE_0
+};
+
+static VkForgeReferencedLayoutDesign VKFORGE_REFERENCED_LAYOUT_DESIGN = 
+{
+    1,
+    PIPELINE_LAYOUT_DESIGNS,
+    1,
+    REFERENCES
+};
+
+static VkForgePipelineFunction PIPELINE_FUNC_0 = {
+    NULL,
+    "Default",
+    0
+};
+static VkForgePipelineFunction* PIPELINE_FUNCTIONS[] = {
+    &PIPELINE_FUNC_0
+};
+
+static VkForgePipelineFunction** VKFORGE_PIPELINE_FUNCTIONS = PIPELINE_FUNCTIONS;
+static uint32_t VKFORGE_PIPELINE_FUNCTION_COUNT = 1;
+
+/** IMPLEMENTATION **/
+
+VkForgeLayout* VkForge_CreateForgeLayout
+(
+    VkSurfaceKHR surface, 
+    VkPhysicalDevice physical_device, 
+    VkDevice device
+)
 {
     assert(device);
 
@@ -79,7 +141,29 @@ void VkForge_DestroyForgeLayout(VkForgeLayout* forgeLayout)
     }
 }
 
-VkForgePipelineLayout VkForge_CreateForgePipelineLayout(
+VkForgeLayoutQueue* VkForge_CreateForgeLayoutQueue()
+{
+    VkForgeLayoutQueue* queue = (VkForgeLayoutQueue*)SDL_malloc(sizeof(VkForgeLayoutQueue));
+    if (!queue)
+    {
+        SDL_LogError(0, "Failed to allocate memory for VkForgeLayoutQueue");
+        exit(1);
+    }
+
+    SDL_memset(queue, 0, sizeof(VkForgeLayoutQueue));
+    return queue;
+}
+
+void VkForge_DestroyForgeLayoutQueue(VkForgeLayoutQueue* queue)
+{
+    if (queue)
+    {
+        SDL_free(queue);
+    }
+}
+
+VkForgePipelineLayout VkForge_CreateForgePipelineLayout
+(
     VkForgeLayout* forgeLayout, 
     const char*    pipelineName
 )
@@ -131,6 +215,7 @@ VkForgePipelineLayout VkForge_CreateForgePipelineLayout(
     };
     
     VkResult vkResult = vkCreatePipelineLayout(forgeLayout->device, &layoutInfo, NULL, &result.pipelineLayout);
+    
     if (vkResult != VK_SUCCESS)
     {
         SDL_LogError(0, "Failed to create pipeline layout");
@@ -147,7 +232,6 @@ VkForgePipelineLayout VkForge_CreateForgePipelineLayout(
     
     GetDescriptorPoolRequirements(
         pipeline_design,
-        pipeline_layout_index,
         &pool_sizes_count,
         pool_sizes
     );
@@ -357,35 +441,23 @@ static void GetDescriptorPoolRequirements(
     }
 }
 
-// REMOVED FUNCTIONS:
-// - VkForge_BuildPipeline
-// - VkForge_BindPipeline
-// - VkForge_BorrowPipeline
-// - VkForge_SharePipelineLayoutDetails
-// - The old CreatePipelineLayout function
-
-// The following functions remain but now operate on VkForgePipelineLayout:
-// - VkForge_QueueDescriptorResource (needs to be updated to accept VkForgePipelineLayout*)
-// - VkForge_WriteDescriptorResources (needs to be updated)
-// - VkForge_ClearDescriptorResourceQueue
-
 /**
  * @brief Queues a descriptor resource for a specific pipeline layout
- * @param layout The VkForge layout instance
+ * @param queue The VkForge layout queue instance
  * @param pipelineLayout The pipeline layout to queue the resource for
  * @param set The descriptor set index
  * @param binding The binding index within the set
  * @param resource The descriptor resource (image or buffer)
  */
 void VkForge_QueueDescriptorResourceForForgePipelineLayout(
-    VkForgeLayout* layout,
+    VkForgeLayoutQueue* queue,
     VkForgePipelineLayout* pipelineLayout,
     uint16_t set,
     uint16_t binding,
     VkForgeDescriptorResource resource
 )
 {
-    assert(layout);
+    assert(queue);
     assert(pipelineLayout);
 
     if (set >= pipelineLayout->descriptor_set_count)
@@ -440,37 +512,37 @@ void VkForge_QueueDescriptorResourceForForgePipelineLayout(
         exit(1);
     }
 
-    uint32_t already_queued_count = layout->descriptor_resource_queue_count;
+    uint32_t already_queued_count = queue->descriptor_resource_queue_count;
 
     if(already_queued_count)
     {
         // Check if this set/binding is already queued for the same pipeline layout
         for (uint32_t i = 0; i < already_queued_count; i++)
         {
-            if (layout->descriptor_resource_queue[i].set == set &&
-                layout->descriptor_resource_queue[i].binding == binding &&
-                layout->descriptor_resource_queue[i].pipeline_layout_index == pipelineLayout->pipeline_layout_index)
+            if (queue->descriptor_resource_queue[i].set == set &&
+                queue->descriptor_resource_queue[i].binding == binding &&
+                queue->descriptor_resource_queue[i].pipeline_layout_index == pipelineLayout->pipeline_layout_index)
             {
                 // Check if resource handles are different
                 bool needs_update = false;
 
                 if (VkForge_IsDescriptorTypeImage(expected_type))
                 {
-                    needs_update = (layout->descriptor_resource_queue[i].resource.image.imageView != resource.image.imageView ||
-                                layout->descriptor_resource_queue[i].resource.image.sampler != resource.image.sampler ||
-                                layout->descriptor_resource_queue[i].resource.image.imageLayout != resource.image.imageLayout);
+                    needs_update = (queue->descriptor_resource_queue[i].resource.image.imageView != resource.image.imageView ||
+                                queue->descriptor_resource_queue[i].resource.image.sampler != resource.image.sampler ||
+                                queue->descriptor_resource_queue[i].resource.image.imageLayout != resource.image.imageLayout);
                 }
                 else if (VkForge_IsDescriptorTypeBuffer(expected_type))
                 {
-                    needs_update = (layout->descriptor_resource_queue[i].resource.buffer.buffer != resource.buffer.buffer ||
-                                layout->descriptor_resource_queue[i].resource.buffer.offset != resource.buffer.offset ||
-                                layout->descriptor_resource_queue[i].resource.buffer.range != resource.buffer.range);
+                    needs_update = (queue->descriptor_resource_queue[i].resource.buffer.buffer != resource.buffer.buffer ||
+                                queue->descriptor_resource_queue[i].resource.buffer.offset != resource.buffer.offset ||
+                                queue->descriptor_resource_queue[i].resource.buffer.range != resource.buffer.range);
                 }
 
                 if (needs_update)
                 {
                     // Update Resource
-                    layout->descriptor_resource_queue[i].resource = resource;
+                    queue->descriptor_resource_queue[i].resource = resource;
 
                     SDL_Log("Queued Updated Resource for set %u binding %u", set, binding);
                 }
@@ -480,36 +552,41 @@ void VkForge_QueueDescriptorResourceForForgePipelineLayout(
     }
 
     // Check if queue is full
-    if (layout->descriptor_resource_queue_count >= VKFORGE_MAX_DESCRIPTOR_RESOURCES)
+    if (queue->descriptor_resource_queue_count >= VKFORGE_MAX_DESCRIPTOR_RESOURCES)
     {
         SDL_LogError(0, "Descriptor Resource Queue is full: %d Max", VKFORGE_MAX_DESCRIPTOR_RESOURCES);
         exit(1);
     }
 
     // Add new entry to queue
-    layout->descriptor_resource_queue[layout->descriptor_resource_queue_count].resource = resource;
-    layout->descriptor_resource_queue[layout->descriptor_resource_queue_count].set = set;
-    layout->descriptor_resource_queue[layout->descriptor_resource_queue_count].binding = binding;
-    layout->descriptor_resource_queue[layout->descriptor_resource_queue_count].pipeline_layout_index = pipelineLayout->pipeline_layout_index;
-    layout->descriptor_resource_queue[layout->descriptor_resource_queue_count].type = expected_type;
-    layout->descriptor_resource_queue[layout->descriptor_resource_queue_count].count = bind_design->count;
+    queue->descriptor_resource_queue[queue->descriptor_resource_queue_count].resource = resource;
+    queue->descriptor_resource_queue[queue->descriptor_resource_queue_count].set = set;
+    queue->descriptor_resource_queue[queue->descriptor_resource_queue_count].binding = binding;
+    queue->descriptor_resource_queue[queue->descriptor_resource_queue_count].pipeline_layout_index = pipelineLayout->pipeline_layout_index;
+    queue->descriptor_resource_queue[queue->descriptor_resource_queue_count].type = expected_type;
+    queue->descriptor_resource_queue[queue->descriptor_resource_queue_count].count = bind_design->count;
 
     SDL_Log("Queued Resource for set %u binding %u", set, binding);
 
-    layout->descriptor_resource_queue_count++;
+    queue->descriptor_resource_queue_count++;
 }
 
 /**
  * @brief Writes all queued descriptor resources to their respective descriptor sets
- * @param layout The VkForge layout instance containing the descriptor queue
+ * @param layout The VkForge layout instance
+ * @param queue The VkForge layout queue instance containing the descriptor queue
  * @param pipelineLayout The pipeline layout to write descriptors for
  */
-void VkForge_WriteDescriptorResourceQueueForCurrentlyBoundForgePipelineLayout(VkForgeLayout* layout, VkForgePipelineLayout* pipelineLayout)
+void VkForge_WriteDescriptorResourceQueueForCurrentlyBoundForgePipelineLayout(
+    VkForgeLayout* layout, 
+    VkForgeLayoutQueue* queue, 
+    VkForgePipelineLayout* pipelineLayout)
 {
     assert(layout);
+    assert(queue);
     assert(pipelineLayout);
 
-    if (layout->descriptor_resource_queue_count == 0)
+    if (queue->descriptor_resource_queue_count == 0)
     {
         return;
     }
@@ -518,9 +595,9 @@ void VkForge_WriteDescriptorResourceQueueForCurrentlyBoundForgePipelineLayout(Vk
     VkWriteDescriptorSet writes[VKFORGE_MAX_DESCRIPTOR_RESOURCES] = {0};
 
     // For each queued resource that belongs to this pipeline layout
-    for (uint32_t i = 0; i < layout->descriptor_resource_queue_count; i++)
+    for (uint32_t i = 0; i < queue->descriptor_resource_queue_count; i++)
     {
-        VkForgeDescriptorResourceQueue* entry = &layout->descriptor_resource_queue[i];
+        VkForgeDescriptorResourceQueue* entry = &queue->descriptor_resource_queue[i];
         
         // Only process entries for this specific pipeline layout
         if (entry->pipeline_layout_index != pipelineLayout->pipeline_layout_index)
@@ -580,57 +657,96 @@ void VkForge_WriteDescriptorResourceQueueForCurrentlyBoundForgePipelineLayout(Vk
 
     // Remove processed entries from the queue
     uint32_t new_index = 0;
-    for (uint32_t i = 0; i < layout->descriptor_resource_queue_count; i++)
+    for (uint32_t i = 0; i < queue->descriptor_resource_queue_count; i++)
     {
-        if (layout->descriptor_resource_queue[i].pipeline_layout_index != pipelineLayout->pipeline_layout_index)
+        if (queue->descriptor_resource_queue[i].pipeline_layout_index != pipelineLayout->pipeline_layout_index)
         {
             // Keep entries for other pipeline layouts
             if (new_index != i)
             {
-                layout->descriptor_resource_queue[new_index] = layout->descriptor_resource_queue[i];
+                queue->descriptor_resource_queue[new_index] = queue->descriptor_resource_queue[i];
             }
             new_index++;
         }
     }
     
-    layout->descriptor_resource_queue_count = new_index;
+    queue->descriptor_resource_queue_count = new_index;
 }
 
 /**
  * @brief Clears all queued descriptor resources for a specific pipeline layout
- * @param layout The VkForge layout instance
+ * @param queue The VkForge layout queue instance
  * @param pipelineLayout The pipeline layout to clear queue for
  */
-void VkForge_ClearDescriptorResourceQueueForForgePipelineLayout(VkForgeLayout* layout, VkForgePipelineLayout* pipelineLayout)
+void VkForge_ClearDescriptorResourceQueueForForgePipelineLayout(
+    VkForgeLayoutQueue* queue, 
+    VkForgePipelineLayout* pipelineLayout)
 {
-    assert(layout);
+    assert(queue);
     assert(pipelineLayout);
 
     uint32_t new_index = 0;
-    for (uint32_t i = 0; i < layout->descriptor_resource_queue_count; i++)
+    for (uint32_t i = 0; i < queue->descriptor_resource_queue_count; i++)
     {
-        if (layout->descriptor_resource_queue[i].pipeline_layout_index != pipelineLayout->pipeline_layout_index)
+        if (queue->descriptor_resource_queue[i].pipeline_layout_index != pipelineLayout->pipeline_layout_index)
         {
             // Keep entries for other pipeline layouts
             if (new_index != i)
             {
-                layout->descriptor_resource_queue[new_index] = layout->descriptor_resource_queue[i];
+                queue->descriptor_resource_queue[new_index] = queue->descriptor_resource_queue[i];
             }
             new_index++;
         }
     }
     
-    layout->descriptor_resource_queue_count = new_index;
+    queue->descriptor_resource_queue_count = new_index;
 }
 
 /**
  * @brief Clears all queued descriptor resources
- * @param layout The VkForge layout instance
+ * @param queue The VkForge layout queue instance
  */
-void VkForge_ClearDescriptorResourceQueue(VkForgeLayout* layout)
+void VkForge_ClearDescriptorResourceQueue(VkForgeLayoutQueue* queue)
 {
-    assert(layout);
-    layout->descriptor_resource_queue_count = 0;
+    assert(queue);
+    queue->descriptor_resource_queue_count = 0;
 }
 
-void VkForge_BindForgePipelineLayoutPerWriteDescriptorResourceQueue(){}
+/**
+ * @brief Binds descriptor sets for the current pipeline layout and writes queued resources
+ * @param layout The VkForge layout instance
+ * @param queue The VkForge layout queue instance
+ * @param pipelineLayout The pipeline layout to bind
+ * @param commandBuffer The command buffer to bind descriptor sets to
+ */
+void VkForge_BindForgePipelineLayoutPerWriteDescriptorResourceQueue(
+    VkForgeLayout* layout,
+    VkForgeLayoutQueue* queue,
+    VkForgePipelineLayout* pipelineLayout,
+    VkCommandBuffer commandBuffer)
+{
+    assert(layout);
+    assert(queue);
+    assert(pipelineLayout);
+    assert(commandBuffer);
+
+    // First write any queued descriptor resources
+    VkForge_WriteDescriptorResourceQueueForCurrentlyBoundForgePipelineLayout(layout, queue, pipelineLayout);
+
+    // Bind descriptor sets to the command buffer
+    if (pipelineLayout->descriptor_set_count > 0)
+    {
+        vkCmdBindDescriptorSets(
+            commandBuffer,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            pipelineLayout->pipelineLayout,
+            0, // firstSet
+            pipelineLayout->descriptor_set_count,
+            pipelineLayout->descriptor_sets,
+            0, // dynamicOffsetCount
+            NULL // pDynamicOffsets
+        );
+
+        SDL_Log("Bound %u descriptor sets to command buffer", pipelineLayout->descriptor_set_count);
+    }
+}

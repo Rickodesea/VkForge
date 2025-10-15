@@ -1,6 +1,13 @@
 #pragma once
 
+#include <vulkan/vulkan.h>
+#include <SDL3/SDL.h>
+
 #include "vkforge_typedecls.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** DEFINES **/
 #define VKFORGE_MAX_DESCRIPTOR_RESOURCES VKFORGE_MAX_DESCRIPTOR_BINDINGS
@@ -76,3 +83,8 @@ void VkForge_QueueDescriptorResourceForForgePipelineLayout(
 void VkForge_WriteDescriptorResourceQueueForCurrentlyBoundForgePipelineLayout(VkForgeLayout* layout, VkForgeLayoutQueue* queue, VkForgePipelineLayout* pipelineLayout);
 void VkForge_ClearDescriptorResourceQueueForForgePipelineLayout(VkForgeLayoutQueue* queue, VkForgePipelineLayout* pipelineLayout);
 void VkForge_ClearDescriptorResourceQueue(VkForgeLayoutQueue* queue);
+
+
+#ifdef __cplusplus
+}
+#endif

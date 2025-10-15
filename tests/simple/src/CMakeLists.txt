@@ -1,27 +1,7 @@
-from vkforge.context import VkForgeContext
-from vkforge.mappings import *
-
-def CreateCMake(ctx: VkForgeContext):
-    files = [
-        FILE.CORE,
-        FILE.FUNC,
-        FILE.LAYOUT_C,
-        FILE.PIPELINE_C,
-        FILE.PIPELINE_H,
-        FILE.TYPE,
-        FILE.UTIL
-    ]
-    files = "\n\t".join(files)
-
-    vkIdcontent = ctx.forgeModel.ID.split(" ")
-    project = vkIdcontent[0].strip()
-    version = vkIdcontent[1].strip()
-
-    content = """\
 cmake_minimum_required(VERSION 3.14)
 
-project({project}
-    VERSION {version}.0
+project(VKFORGE
+    VERSION 0.5.0
     DESCRIPTION "Vulkan User-End API Implementation Generator"
     LANGUAGES C
 )
@@ -49,18 +29,13 @@ find_package(Vulkan 1.3 REQUIRED)
 target_link_libraries(vkforge_deps INTERFACE Vulkan::Vulkan)
 
 add_library(vkforge SHARED
-    {files}
+    vkforge_core.c
+	vkforge_funcdecls.h
+	vkforge_layout.c
+	vkforge_pipelines.c
+	vkforge_pipelines.h
+	vkforge_typedecls.h
+	vkforge_utils.c
 )
 
 target_link_libraries(vkforge PUBLIC vkforge_deps)
-"""
-    return content.format(
-        files=files,
-        project=project.upper(),
-        version=version
-    )
-
-def GetCMakeStrings(ctx: VkForgeContext):
-    return [
-        CreateCMake(ctx),
-    ]

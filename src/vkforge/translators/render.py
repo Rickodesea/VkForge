@@ -1,6 +1,6 @@
 from vkforge.context import VkForgeContext
 
-def GetPlatformStrings(ctx: VkForgeContext):
+def GetRenderStrings(ctx: VkForgeContext):
     return [
         
     ]

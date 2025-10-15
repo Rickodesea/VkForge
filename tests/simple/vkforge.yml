@@ -1,0 +1,10 @@
+ID: VkForge 0.5 
+
+Pipeline:
+  - name: Simple
+    ShaderModule:
+      - path: default.vert
+      - path: default.frag
+    VertexInputBindingDescription:
+      - stride: Vertex
+        first_location: 0

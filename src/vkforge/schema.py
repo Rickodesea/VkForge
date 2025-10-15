@@ -608,7 +608,8 @@ class VkForgeModel(BaseModel):
             FILE.PIPELINE_H,
             FILE.TYPE,
             FILE.UTIL,
-            FILE.LAYOUT
+            FILE.LAYOUT_C,
+            FILE.LAYOUT_H
         ]]
     ] = Field(
         default=None,

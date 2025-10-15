@@ -76,3 +76,4 @@ void VkForge_QueueDescriptorResourceForForgePipelineLayout(
 void VkForge_WriteDescriptorResourceQueueForCurrentlyBoundForgePipelineLayout(VkForgeLayout* layout, VkForgeLayoutQueue* queue, VkForgePipelineLayout* pipelineLayout);
 void VkForge_ClearDescriptorResourceQueueForForgePipelineLayout(VkForgeLayoutQueue* queue, VkForgePipelineLayout* pipelineLayout);
 void VkForge_ClearDescriptorResourceQueue(VkForgeLayoutQueue* queue);
+

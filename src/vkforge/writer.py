@@ -151,9 +151,10 @@ def GetUserDefinedInsertions(ctx: VkForgeContext) -> str:
 def Generate(ctx: VkForgeContext):
     Write_C_Definition_Module(ctx, FILE.CORE, GetCoreStrings)
     Write_C_Definition_Module(ctx, FILE.UTIL, GetUtilStrings, additionalIncludes=["<stdlib.h>", "<SDL3_image/SDL_image.h>"])
-    Write_C_Definition_Module(ctx, FILE.LAYOUT, GetLayoutStrings, additionalIncludes=[FILE.PIPELINE_H])
+    Write_C_Definition_Module(ctx, FILE.LAYOUT_C, GetLayoutStrings, additionalIncludes=[FILE.PIPELINE_H, FILE.LAYOUT_H])
     Write_C_Definition_Module(ctx, FILE.PIPELINE_C, GetPipelineStrings)
     Write_C_Declaration_Module(ctx, FILE.TYPE, GetTypeStrings)
     Write_C_Declaration_Module(ctx, FILE.FUNC, GetFuncStrings)
     Write_C_Declaration_Module(ctx, FILE.PIPELINE_H, GetPipelineDeclarationStrings)
+    Write_C_Declaration_Module(ctx, FILE.LAYOUT_H, GetLayoutHeaderStrings)
     Write_Plain_File(ctx, FILE.CMAKE, GetCMakeStrings)
