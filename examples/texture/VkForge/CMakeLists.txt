@@ -32,6 +32,7 @@ add_library(vkforge SHARED
     vkforge_core.c
 	vkforge_funcdecls.h
 	vkforge_layout.c
+	vkforge_layout.h
 	vkforge_pipelines.c
 	vkforge_pipelines.h
 	vkforge_typedecls.h
