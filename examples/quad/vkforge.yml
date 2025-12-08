@@ -5,20 +5,21 @@ InstanceCreateInfo:
 
 UserDefined:
   includes:
-  - ../entity.h
+    - ../entity.h
 
 Pipeline:
-- name: Default
-  ShaderModule:
-  - path: shader.vert
-  - path: shader.frag
-  VertexInputBindingDescription: # Order of the list refer to the buffer binding. Ensure you bind your vertex buffers in the same order because that's how your generated pipeline codes expects them!
-  - stride: sizeof(float) * 2 # must put the sizeof first; could also be a numeric int
-    first_location: 0
-  - stride:         VisualRect
-    first_location: 1
-    input_rate: instance # unless specified, vertex input rate is assumed
-    stride_members: # Optional description of members of type. You only need to specify as much needed and in the order
-    - color
-    - pos
-    - size
+  - name: Default
+    ShaderModule:
+      - path: shader.vert
+      - path: shader.frag
+    VertexInputBindingDescription: # Order of the list refer to the buffer binding. Ensure you bind your vertex buffers in the same order because that's how your generated pipeline codes expects them!
+      - stride: sizeof(float) * 2 # must put the sizeof first; could also be a numeric int
+        first_location: 0
+        input_rate: vertex
+      - stride: VisualRect
+        first_location: 1
+        input_rate: instance
+        stride_members: # Optional description of members of type. You only need to specify as much needed and in the order
+          - color
+          - pos
+          - size

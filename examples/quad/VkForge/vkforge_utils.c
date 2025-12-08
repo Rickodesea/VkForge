@@ -751,7 +751,7 @@ VkSampler VkForge_CreateSampler
     return sampler;
 }
 
-VkForgeTexture VkForge_CreateTexture
+VkForgeTexture* VkForge_CreateTexture
 (
     VkPhysicalDevice physical_device,
     VkDevice device,
@@ -765,7 +765,8 @@ VkForgeTexture VkForge_CreateTexture
     VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     VkFilter filter = VK_FILTER_LINEAR;
 
-    VkForgeTexture texture = {0};
+    VkForgeTexture* texture = SDL_malloc(sizeof(VkForgeTexture));
+    SDL_memset(texture, 0, sizeof(VkForgeTexture));
 
     VkForgePixelFormatPair fmtPair = VkForge_GetPixelFormatFromString(pixel_order);
     
@@ -785,10 +786,10 @@ VkForgeTexture VkForge_CreateTexture
     }
     surface = converted;
 
-    texture.width = surface->w;
-    texture.height = surface->h;
-    texture.format = fmtPair.vk_format;
-    texture.samples = VK_SAMPLE_COUNT_1_BIT;
+    texture->width = surface->w;
+    texture->height = surface->h;
+    texture->format = fmtPair.vk_format;
+    texture->samples = VK_SAMPLE_COUNT_1_BIT;
 
     VkDeviceSize imageSize = surface->pitch * surface->h;
 
@@ -804,22 +805,22 @@ VkForgeTexture VkForge_CreateTexture
     (
         physical_device,
         device,
-        texture.width,
-        texture.height,
-        texture.format,
+        texture->width,
+        texture->height,
+        texture->format,
         usage,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     );
 
-    texture.image = imageAlloc.image;
-    texture.memory = imageAlloc.memory;
+    texture->image = imageAlloc.image;
+    texture->memory = imageAlloc.memory;
 
     VkForge_BeginCommandBuffer(commandBuffer);
 
     VkForge_CmdImageBarrier
     (
         commandBuffer,
-        texture.image,
+        texture->image,
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         0,
@@ -832,16 +833,16 @@ VkForgeTexture VkForge_CreateTexture
     (
         commandBuffer, 
         staging.buffer,
-        texture.image,
+        texture->image,
         0, 0,
-        texture.width, texture.height,
+        texture->width, texture->height,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
     );
 
     VkForge_CmdImageBarrier
     (
         commandBuffer,
-        texture.image,
+        texture->image,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -859,13 +860,13 @@ VkForgeTexture VkForge_CreateTexture
     vkDestroyFence(device, fence, 0);
     VkForge_DestroyBufferAlloc(device, staging);
 
-    texture.imageView = VkForge_CreateImageView(device, texture.image, texture.format);
-    texture.sampler = VkForge_CreateSampler(device, filter, addressMode);
+    texture->imageView = VkForge_CreateImageView(device, texture->image, texture->format);
+    texture->sampler = VkForge_CreateSampler(device, filter, addressMode);
 
     return texture;
 }
 
-void VkForge_DestroyTexture(VkDevice device, VkForgeTexture texture)
+void VkForge_DestroyTexture(VkDevice device, VkForgeTexture* texture)
 {
     if (device == VK_NULL_HANDLE) {
         SDL_LogError(0, "Invalid device handle when destroying texture");
@@ -873,34 +874,36 @@ void VkForge_DestroyTexture(VkDevice device, VkForgeTexture texture)
     }
 
     // Destroy sampler if it exists
-    if (texture.sampler != VK_NULL_HANDLE) {
-        vkDestroySampler(device, texture.sampler, NULL);
-        texture.sampler = VK_NULL_HANDLE;
+    if (texture->sampler != VK_NULL_HANDLE) {
+        vkDestroySampler(device, texture->sampler, NULL);
+        texture->sampler = VK_NULL_HANDLE;
     }
 
     // Destroy image view if it exists
-    if (texture.imageView != VK_NULL_HANDLE) {
-        vkDestroyImageView(device, texture.imageView, NULL);
-        texture.imageView = VK_NULL_HANDLE;
+    if (texture->imageView != VK_NULL_HANDLE) {
+        vkDestroyImageView(device, texture->imageView, NULL);
+        texture->imageView = VK_NULL_HANDLE;
     }
 
     // Destroy image if it exists
-    if (texture.image != VK_NULL_HANDLE) {
-        vkDestroyImage(device, texture.image, NULL);
-        texture.image = VK_NULL_HANDLE;
+    if (texture->image != VK_NULL_HANDLE) {
+        vkDestroyImage(device, texture->image, NULL);
+        texture->image = VK_NULL_HANDLE;
     }
 
     // Free memory if it exists
-    if (texture.memory != VK_NULL_HANDLE) {
-        vkFreeMemory(device, texture.memory, NULL);
-        texture.memory = VK_NULL_HANDLE;
+    if (texture->memory != VK_NULL_HANDLE) {
+        vkFreeMemory(device, texture->memory, NULL);
+        texture->memory = VK_NULL_HANDLE;
     }
 
     // Reset other fields
-    texture.width = 0;
-    texture.height = 0;
-    texture.format = VK_FORMAT_UNDEFINED;
-    texture.samples = VK_SAMPLE_COUNT_1_BIT;
+    texture->width = 0;
+    texture->height = 0;
+    texture->format = VK_FORMAT_UNDEFINED;
+    texture->samples = VK_SAMPLE_COUNT_1_BIT;
+
+    SDL_free(texture);
 }
 
 VkDeviceMemory VkForge_AllocDeviceMemory
@@ -1338,11 +1341,18 @@ VkDescriptorPool VkForge_CreateDescriptorPool(
     return pool;
 }
 
-VkDescriptorSet VkForge_AllocateDescriptorSet(
+/// @brief
+/// @param device
+/// @param pool
+/// @param descriptorset_count
+/// @param descriptorset_layouts
+/// @param outDescriptorSets must be large enough to accomodate atleast descriptorset_count
+void VkForge_AllocateDescriptorSet(
     VkDevice device,
     VkDescriptorPool pool,
     uint32_t descriptorset_count,
-    VkDescriptorSetLayout* descriptorset_layouts
+    VkDescriptorSetLayout* descriptorset_layouts,
+    VkDescriptorSet* outDescriptorSets
 )
 {
     VkDescriptorSetAllocateInfo allocInfo = { 0 };
@@ -1351,11 +1361,7 @@ VkDescriptorSet VkForge_AllocateDescriptorSet(
     allocInfo.descriptorSetCount = descriptorset_count;
     allocInfo.pSetLayouts = descriptorset_layouts;
 
-    VkDescriptorSet descriptorset = VK_NULL_HANDLE;
-
-    vkAllocateDescriptorSets(device, &allocInfo, &descriptorset);
-
-    return descriptorset;
+    vkAllocateDescriptorSets(device, &allocInfo, outDescriptorSets);
 }
 
 VkForgePixelFormatPair VkForge_GetPixelFormatFromString(const char* order)
@@ -1374,6 +1380,96 @@ VkForgePixelFormatPair VkForge_GetPixelFormatFromString(const char* order)
     // e.g., XRGB, XBGR, RGBX, BGRX (Vulkan also has VK_FORMAT_B8G8R8A8_UNORM for BGRA)
 
     return fmt;
+}
+
+/**
+ * @brief Checks if a descriptor type is for buffer resources
+ * @param type The Vulkan descriptor type to check
+ * @return True if the descriptor type is for buffers, false otherwise
+ */
+bool VkForge_IsDescriptorTypeBuffer(VkDescriptorType type)
+{
+    return (type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
+            type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
+            type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
+            type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC);
+}
+
+/**
+ * @brief Checks if a descriptor type is for image resources
+ * @param type The Vulkan descriptor type to check
+ * @return True if the descriptor type is for images, false otherwise
+ */
+bool VkForge_IsDescriptorTypeImage(VkDescriptorType type)
+{
+    return (type == VK_DESCRIPTOR_TYPE_SAMPLER ||
+            type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
+            type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
+            type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE ||
+            type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT);
+}
+
+const char* VkForge_StringifyDescriptorType(VkDescriptorType descriptortype)
+{
+    switch (descriptortype)
+    {
+        case VK_DESCRIPTOR_TYPE_SAMPLER:
+            return "VK_DESCRIPTOR_TYPE_SAMPLER";
+        case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+            return "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+        case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+            return "VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE";
+        case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+            return "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+        case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+            return "VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER";
+        case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+            return "VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER";
+        case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+            return "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER";
+        case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+            return "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
+        case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+            return "VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC";
+        case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+            return "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC";
+        case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+            return "VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT";
+        case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
+            return "VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK";
+        #ifdef VK_KHR_acceleration_structure
+        case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+            return "VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR";
+        #endif
+        #ifdef VK_NV_ray_tracing
+        case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV:
+            return "VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV";
+        #endif
+        #ifdef VK_QCOM_image_processing
+        case VK_DESCRIPTOR_TYPE_SAMPLE_WEIGHT_IMAGE_QCOM:
+            return "VK_DESCRIPTOR_TYPE_SAMPLE_WEIGHT_IMAGE_QCOM";
+        case VK_DESCRIPTOR_TYPE_BLOCK_MATCH_IMAGE_QCOM:
+            return "VK_DESCRIPTOR_TYPE_BLOCK_MATCH_IMAGE_QCOM";
+        #endif
+        #ifdef VK_ARM_tensors
+        case VK_DESCRIPTOR_TYPE_TENSOR_ARM:
+            return "VK_DESCRIPTOR_TYPE_TENSOR_ARM";
+        #endif
+        #ifdef VK_EXT_mutable_descriptor_type
+        case VK_DESCRIPTOR_TYPE_MUTABLE_EXT:
+            return "VK_DESCRIPTOR_TYPE_MUTABLE_EXT";
+        #endif
+        #ifdef VK_NV_partitioned_acceleration_structure
+        case VK_DESCRIPTOR_TYPE_PARTITIONED_ACCELERATION_STRUCTURE_NV:
+            return "VK_DESCRIPTOR_TYPE_PARTITIONED_ACCELERATION_STRUCTURE_NV";
+        #endif
+        #ifdef VK_VALVE_mutable_descriptor_type
+        case VK_DESCRIPTOR_TYPE_MUTABLE_VALVE:
+            return "VK_DESCRIPTOR_TYPE_MUTABLE_VALVE";
+        #endif
+        default:
+            return "VK_DESCRIPTOR_TYPE_UNKNOWN";
+    }
 }
 
 

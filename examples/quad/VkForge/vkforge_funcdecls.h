@@ -219,14 +219,14 @@ VkSampler VkForge_CreateSampler(VkDevice device,
     VkFilter filter,
     VkSamplerAddressMode addressMode);
 
-VkForgeTexture VkForge_CreateTexture(VkPhysicalDevice physical_device,
+VkForgeTexture* VkForge_CreateTexture(VkPhysicalDevice physical_device,
     VkDevice device,
     VkQueue queue,
     VkCommandBuffer commandBuffer,
     const char* filename,
     const char* pixel_order);
 
-void VkForge_DestroyTexture(VkDevice device, VkForgeTexture texture);
+void VkForge_DestroyTexture(VkDevice device, VkForgeTexture* texture);
 
 VkDeviceMemory VkForge_AllocDeviceMemory(VkPhysicalDevice physical_device,
     VkDevice device,
@@ -285,30 +285,19 @@ VkDescriptorPool VkForge_CreateDescriptorPool(VkDevice device,
     uint32_t pool_sizes_count,
     VkDescriptorPoolSize* pool_sizes);
 
-VkDescriptorSet VkForge_AllocateDescriptorSet(VkDevice device,
+void VkForge_AllocateDescriptorSet(VkDevice device,
     VkDescriptorPool pool,
     uint32_t descriptorset_count,
-    VkDescriptorSetLayout* descriptorset_layouts);
+    VkDescriptorSetLayout* descriptorset_layouts,
+    VkDescriptorSet* outDescriptorSets);
 
 VkForgePixelFormatPair VkForge_GetPixelFormatFromString(const char* order);
 
-VkForgeLayout* VkForge_CreateLayout(VkSurfaceKHR surface, VkPhysicalDevice physical_device, VkDevice device);
+bool VkForge_IsDescriptorTypeBuffer(VkDescriptorType type);
 
-void VkForge_DestroyLayout(VkForgeLayout* forge_layout);
+bool VkForge_IsDescriptorTypeImage(VkDescriptorType type);
 
-VkResult VkForge_CreatePipeline(VkForgeLayout* forge_layout, const char* pipeline_name);
-
-void VkForge_BindPipeline(VkForgeLayout* layout, const char* pipeline_name, VkCommandBuffer cmdbuf);
-
-VkPipeline VkForge_BorrowPipeline(VkForgeLayout* forge_layout, const char* pipeline_name);
-
-void VkForge_SharePipelineLayoutDetails(VkForgeLayout* forge_layout,
-    const char* pipeline_name,
-    VkPipelineLayout* outPipelineLayouts,
-    uint32_t* outDescriptorSetLayoutCount,
-    VkDescriptorSetLayout* outDescriptorSetLayouts,
-    uint32_t* outDescriptorPoolSizeCount,
-    VkDescriptorPoolSize* outDescriptorPoolSizes);
+const char* VkForge_StringifyDescriptorType(VkDescriptorType descriptortype);
 
 
 
