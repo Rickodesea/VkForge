@@ -1,17 +1,12 @@
 [project]
 name = "vkforge"
-version = "0.5.9"
+version = "0.6.0"
 description = "VkForge: A Vulkan User-End API Implementation Generator for Renderer Development"
-authors = [
-    { name = "Alrick Grandison", email = "alrickgrandison@gmail.com" }
-]
+authors = [{ name = "Alrick Grandison", email = "alrickgrandison@gmail.com" }]
 license = "MIT"
 readme = "README.md"
 requires-python = ">=3.8"
-dependencies = [
-    "pydantic>=2.0",
-    "PyYAML>=6.0",
-]
+dependencies = ["pydantic>=2.0", "PyYAML>=6.0"]
 
 [project.urls]
 Homepage = "https://github.com/Rickodesea/VkForge"
